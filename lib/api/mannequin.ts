@@ -19,11 +19,10 @@ export interface MannequinResponse {
 }
 
 // Modelo para gerar manequim
-// Tenta SDXL primeiro, se falhar usa modelo básico
-// IMPORTANTE: Se der erro, você precisa pegar a versão mais recente em:
-// https://replicate.com/stability-ai/sdxl
-const SDXL_MODEL = 'stability-ai/sdxl' // Usa versão mais recente automaticamente
+// Usa modelo básico primeiro (mais confiável), SDXL como fallback
+// IMPORTANTE: Modelo básico é mais estável e rápido
 const BASIC_MODEL = 'stability-ai/stable-diffusion:db21e45d3f7023abc2a46ee38a23973f6dce16bb082a930b0c49861f96d1e5bf'
+const SDXL_MODEL = 'stability-ai/sdxl' // Fallback se básico falhar
 
 /**
  * Gera imagem de manequim de loja vestindo a peça
@@ -61,30 +60,58 @@ export async function generateMannequin(
     mannequinStyle = 'realistic female mannequin, human-like proportions, elegant pose, graceful stance, luxury retail display'
   }
   
-  // Prompt mais específico e direto
-  const prompt = `${genderText} mannequin, ${mannequinStyle}, wearing fashion clothing, ${backgroundStyle}, professional retail photography, high quality, detailed, photorealistic, fashion store display`
+  // Prompt mais específico e direto - FOCO EM MANEQUIM
+  const prompt = `professional fashion photography, ${genderText} store mannequin, ${mannequinStyle}, wearing elegant fashion clothing, ${backgroundStyle}, high-end retail display, studio lighting, 8k resolution, photorealistic, mannequin display, fashion boutique`
 
   console.log('🔵 Iniciando geração de manequim...')
   console.log('🔵 Gênero:', request.gender)
   console.log('🔵 Prompt:', prompt.substring(0, 200) + '...')
   
-  // Tenta primeiro com SDXL (melhor qualidade)
+  // Tenta primeiro com modelo básico (mais confiável e rápido)
   try {
-    console.log('🔵 Tentando gerar manequim com SDXL...')
+    console.log('🔵 Tentando gerar manequim com Stable Diffusion (básico)...')
     const input = {
       prompt,
-      negative_prompt: 'realistic human face, skin texture, detailed facial features, hair, person, blurry, low quality, distorted, deformed, ugly, bad anatomy, multiple people, realistic skin',
-      num_inference_steps: 50, // Aumentado para melhor qualidade
-      guidance_scale: 8.0, // Aumentado para melhor aderência ao prompt
-      width: 768, // Aumentado para melhor qualidade
-      height: 1024, // Aumentado para melhor qualidade
+      negative_prompt: 'realistic human face, skin texture, detailed facial features, hair, person, blurry, low quality, distorted, deformed, ugly, bad anatomy, multiple people, realistic skin, human eyes, human hands',
+      num_inference_steps: 40, // Reduzido para ser mais rápido e confiável
+      guidance_scale: 8.5, // Aumentado para melhor aderência ao prompt
+      width: 512, // Dimensões padrão (mais confiável)
+      height: 768, // Proporção vertical para manequim
     }
     
-    console.log('🔵 SDXL Input:', JSON.stringify(input, null, 2))
+    console.log('🔵 Basic Model Input:', JSON.stringify(input, null, 2))
     
-    const output = await replicate.run(SDXL_MODEL, { input })
+    // Usa processamento assíncrono para garantir que complete
+    const prediction = await replicate.predictions.create({
+      version: BASIC_MODEL.split(':')[1], // Extrai versão do modelo
+      input,
+    })
+    
+    console.log('🔵 Prediction ID:', prediction.id)
+    
+    // Polling até completar (máximo 1 minuto)
+    let finalPrediction = prediction
+    const maxAttempts = 30
+    let attempts = 0
+    
+    while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      finalPrediction = await replicate.predictions.get(prediction.id)
+      attempts++
+      console.log(`🔵 Tentativa ${attempts}/${maxAttempts} - Status: ${finalPrediction.status}`)
+    }
+    
+    if (finalPrediction.status === 'failed') {
+      throw new Error(`Modelo básico falhou: ${finalPrediction.error || 'Erro desconhecido'}`)
+    }
+    
+    if (finalPrediction.status !== 'succeeded') {
+      throw new Error(`Modelo básico não completou a tempo. Status: ${finalPrediction.status}`)
+    }
+    
+    const output = finalPrediction.output
 
-    console.log('✅ SDXL retornou resultado')
+    console.log('✅ Modelo básico retornou resultado')
     console.log('🔵 Output raw:', output)
     console.log('🔵 Output type:', typeof output)
     
@@ -92,7 +119,7 @@ export async function generateMannequin(
     let imageUrl: string
     if (Array.isArray(output)) {
       if (output.length === 0) {
-        throw new Error('SDXL retornou array vazio')
+        throw new Error('Modelo básico retornou array vazio')
       }
       imageUrl = typeof output[0] === 'string' ? output[0] : (output[0] as any).url || String(output[0])
     } else if (typeof output === 'string') {
@@ -102,41 +129,42 @@ export async function generateMannequin(
     }
 
     if (!imageUrl || imageUrl.length === 0) {
-      throw new Error('SDXL retornou URL vazia ou inválida')
+      throw new Error('Modelo básico retornou URL vazia ou inválida')
     }
 
-    console.log('✅ Manequim gerado com SDXL com sucesso:', imageUrl.substring(0, 100) + '...')
+    console.log('✅ Manequim gerado com modelo básico com sucesso:', imageUrl.substring(0, 100) + '...')
     return {
       image: imageUrl,
     }
   } catch (error: any) {
-    // Se SDXL falhar, tenta com modelo básico
-    console.error('❌ SDXL falhou:', error.message)
+    // Se modelo básico falhar, tenta com SDXL como fallback
+    console.error('❌ Modelo básico falhou:', error.message)
     console.error('❌ Error stack:', error.stack)
-    console.warn('⚠️ Tentando fallback com modelo básico...')
+    console.warn('⚠️ Tentando fallback com SDXL...')
     
     try {
-      console.log('🔵 Tentando gerar manequim com modelo básico (Stable Diffusion)...')
+      console.log('🔵 Tentando gerar manequim com SDXL (fallback)...')
       const fallbackInput = {
         prompt,
-        negative_prompt: 'realistic human face, skin texture, detailed facial features, hair, person, blurry, low quality, realistic skin',
-        num_inference_steps: 50,
-        guidance_scale: 8.5,
-        width: 512,
+        negative_prompt: 'realistic human face, skin texture, detailed facial features, hair, person, blurry, low quality, realistic skin, human eyes, human hands',
+        num_inference_steps: 30, // Reduzido para ser mais rápido
+        guidance_scale: 7.5,
+        width: 512, // Reduzido para evitar erros
         height: 768,
       }
       
-      console.log('🔵 Fallback Input:', JSON.stringify(fallbackInput, null, 2))
+      console.log('🔵 SDXL Fallback Input:', JSON.stringify(fallbackInput, null, 2))
       
-      const output = await replicate.run(BASIC_MODEL, { input: fallbackInput })
+      // Tenta usar SDXL diretamente
+      const output = await replicate.run(SDXL_MODEL, { input: fallbackInput })
 
-      console.log('✅ Modelo básico retornou resultado')
+      console.log('✅ SDXL retornou resultado')
       console.log('🔵 Output raw:', output)
       
       let imageUrl: string
       if (Array.isArray(output)) {
         if (output.length === 0) {
-          throw new Error('Modelo básico retornou array vazio')
+          throw new Error('SDXL retornou array vazio')
         }
         imageUrl = typeof output[0] === 'string' ? output[0] : (output[0] as any).url || String(output[0])
       } else if (typeof output === 'string') {
@@ -146,19 +174,19 @@ export async function generateMannequin(
       }
 
       if (!imageUrl || imageUrl.length === 0) {
-        throw new Error('Modelo básico retornou URL vazia ou inválida')
+        throw new Error('SDXL retornou URL vazia ou inválida')
       }
 
-      console.log('✅ Manequim gerado com modelo básico com sucesso:', imageUrl.substring(0, 100) + '...')
+      console.log('✅ Manequim gerado com SDXL (fallback) com sucesso:', imageUrl.substring(0, 100) + '...')
       return { image: imageUrl }
     } catch (fallbackError: any) {
       console.error('❌ ERRO CRÍTICO: Ambos os modelos falharam!')
-      console.error('❌ SDXL Error:', error.message)
-      console.error('❌ Fallback Error:', fallbackError.message)
+      console.error('❌ Modelo básico Error:', error.message)
+      console.error('❌ SDXL Fallback Error:', fallbackError.message)
       console.error('❌ Fallback Stack:', fallbackError.stack)
       throw new Error(
-        `Erro ao gerar manequim: SDXL falhou (${error.message}), ` +
-        `Fallback também falhou (${fallbackError.message}). ` +
+        `Erro ao gerar manequim: Modelo básico falhou (${error.message}), ` +
+        `SDXL fallback também falhou (${fallbackError.message}). ` +
         `Verifique os logs para mais detalhes.`
       )
     }

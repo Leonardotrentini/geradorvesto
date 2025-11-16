@@ -31,6 +31,25 @@ export interface TryOnResponse {
 const MODEL_NAME = 'omnious/vella-1.5'
 
 /**
+ * Obtém a versão mais recente do modelo Vella
+ */
+async function getVellaVersion(replicate: Replicate): Promise<string> {
+  try {
+    const model = await replicate.models.get('omnious', 'vella-1.5')
+    const latestVersion = model.latest_version
+    if (!latestVersion) {
+      throw new Error('Não foi possível obter versão do modelo')
+    }
+    console.log('🔵 Versão do Vella:', latestVersion.id)
+    return latestVersion.id
+  } catch (error: any) {
+    console.warn('⚠️ Não foi possível obter versão, usando nome do modelo:', error.message)
+    // Fallback: tenta usar o nome do modelo diretamente
+    throw new Error('Não foi possível obter versão do modelo Vella. Verifique sua conexão.')
+  }
+}
+
+/**
  * Gera avatar vestindo a peça usando Vella 1.5
  * Este modelo preserva a peça de roupa exata
  */
@@ -56,24 +75,77 @@ export async function generateTryOnWithReplicate(
   console.log('🔵 Garment Image URL:', request.garmentImage?.substring(0, 100) + '...')
   console.log('🔵 Person Image URL:', request.personImage?.substring(0, 100) + '...')
   
+  // VALIDAÇÃO CRÍTICA: Verificar se URLs são acessíveis
+  try {
+    console.log('🔵 Validando URLs antes de enviar...')
+    const [garmentCheck, personCheck] = await Promise.all([
+      fetch(request.garmentImage, { method: 'HEAD' }).catch(() => null),
+      fetch(request.personImage, { method: 'HEAD' }).catch(() => null),
+    ])
+    
+    if (!garmentCheck || !garmentCheck.ok) {
+      throw new Error(`URL da roupa não é acessível: ${request.garmentImage}`)
+    }
+    if (!personCheck || !personCheck.ok) {
+      throw new Error(`URL da pessoa não é acessível: ${request.personImage}`)
+    }
+    console.log('✅ URLs validadas e acessíveis')
+  } catch (validationError: any) {
+    console.error('❌ Erro na validação de URLs:', validationError)
+    throw new Error(`Erro ao validar URLs: ${validationError.message}`)
+  }
+  
+  // Detectar tipo de roupa baseado na URL (tentativa simples)
+  // Se contém "dress" ou "vestido", usa dress_image, senão top_image
+  const isDress = request.garmentImage.toLowerCase().includes('dress') || 
+                  request.garmentImage.toLowerCase().includes('vestido')
+  
   const input: any = {
     // Vella aceita top_image (camisa/blusa) ou dress_image (vestido)
-    // Vamos usar top_image por padrão (funciona para qualquer peça)
-    top_image: request.garmentImage,
+    // Tenta detectar automaticamente, mas usa top_image por padrão
+    ...(isDress ? { dress_image: request.garmentImage } : { top_image: request.garmentImage }),
     
     // model_image é OBRIGATÓRIO para Vella
     model_image: request.personImage,
-    
-    // Parâmetros opcionais que melhoram resultados
-    // category: 'top' // Pode ser 'top', 'dress', 'bottom', etc.
   }
 
   try {
     console.log('🔵 Enviando requisição para Vella 1.5...')
+    console.log('🔵 Tipo detectado:', isDress ? 'dress' : 'top')
     console.log('🔵 Input completo:', JSON.stringify(input, null, 2))
     
-    // Usa a biblioteca cliente que aceita o nome do modelo diretamente
-    const output = await replicate.run(MODEL_NAME, { input })
+    // CRÍTICO: Usar processamento assíncrono para garantir que o modelo processe corretamente
+    // O Vella pode precisar de mais tempo e retornar erro se tentarmos síncrono
+    console.log('🔵 Criando predição assíncrona...')
+    const prediction = await replicate.predictions.create({
+      version: await getVellaVersion(replicate),
+      input,
+    })
+    
+    console.log('🔵 Prediction ID:', prediction.id)
+    console.log('🔵 Prediction status inicial:', prediction.status)
+    
+    // Polling até completar (máximo 2 minutos)
+    let finalPrediction = prediction
+    const maxAttempts = 60 // 60 tentativas de 2 segundos = 2 minutos
+    let attempts = 0
+    
+    while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 2000)) // Aguarda 2 segundos
+      finalPrediction = await replicate.predictions.get(prediction.id)
+      attempts++
+      console.log(`🔵 Tentativa ${attempts}/${maxAttempts} - Status: ${finalPrediction.status}`)
+    }
+    
+    if (finalPrediction.status === 'failed') {
+      throw new Error(`Vella falhou: ${finalPrediction.error || 'Erro desconhecido'}`)
+    }
+    
+    if (finalPrediction.status !== 'succeeded') {
+      throw new Error(`Vella não completou a tempo. Status: ${finalPrediction.status}`)
+    }
+    
+    const output = finalPrediction.output
 
     console.log('✅ Vella retornou resultado')
     console.log('🔵 Output raw:', output)
@@ -121,15 +193,67 @@ export async function generateTryOnWithReplicate(
       throw new Error('Vella não retornou nenhuma imagem. Verifique se as URLs das imagens são públicas e acessíveis.')
     }
 
-    // Valida se a primeira URL é diferente da imagem original da pessoa
+    // VALIDAÇÃO CRÍTICA: Verificar se a primeira URL é diferente da imagem original da pessoa
     const firstUrl = outputUrls[0]
-    if (firstUrl === request.personImage) {
-      console.warn('⚠️ ATENÇÃO: URL retornada é igual à imagem original da pessoa!')
-      console.warn('⚠️ Isso pode indicar que o Vella não processou a imagem corretamente.')
-      console.warn('⚠️ Verifique se:')
-      console.warn('   - A imagem da roupa está isolada (fundo branco/transparente)')
-      console.warn('   - A imagem da pessoa é de corpo inteiro')
-      console.warn('   - As URLs são públicas e acessíveis')
+    
+    // Compara URLs (sem query params)
+    const cleanFirstUrl = firstUrl.split('?')[0]
+    const cleanPersonUrl = request.personImage.split('?')[0]
+    
+    if (cleanFirstUrl === cleanPersonUrl || firstUrl === request.personImage) {
+      console.error('❌ ERRO CRÍTICO: URL retornada é igual à imagem original da pessoa!')
+      console.error('❌ Isso significa que o Vella NÃO processou a imagem.')
+      console.error('❌ Possíveis causas:')
+      console.error('   1. Imagem da roupa não está isolada (precisa fundo branco/transparente)')
+      console.error('   2. Imagem da pessoa não é de corpo inteiro')
+      console.error('   3. URLs não são acessíveis pelo Replicate')
+      console.error('   4. Tipo de roupa incorreto (tentou top_image mas é dress ou vice-versa)')
+      
+      // TENTA RETRY com dress_image se usou top_image
+      if (!isDress) {
+        console.log('🔄 Tentando retry com dress_image...')
+        try {
+          const retryInput = {
+            dress_image: request.garmentImage,
+            model_image: request.personImage,
+          }
+          const retryPrediction = await replicate.predictions.create({
+            version: await getVellaVersion(replicate),
+            input: retryInput,
+          })
+          
+          // Polling rápido (30 segundos)
+          let retryFinal = retryPrediction
+          for (let i = 0; i < 15; i++) {
+            await new Promise(resolve => setTimeout(resolve, 2000))
+            retryFinal = await replicate.predictions.get(retryPrediction.id)
+            if (retryFinal.status === 'succeeded' || retryFinal.status === 'failed') break
+          }
+          
+          if (retryFinal.status === 'succeeded' && retryFinal.output) {
+            const retryOutput = Array.isArray(retryFinal.output) ? retryFinal.output[0] : retryFinal.output
+            const retryUrl = typeof retryOutput === 'string' ? retryOutput : String(retryOutput)
+            
+            if (retryUrl !== request.personImage && retryUrl.split('?')[0] !== cleanPersonUrl) {
+              console.log('✅ Retry com dress_image funcionou!')
+              return {
+                id: retryPrediction.id,
+                status: 'succeeded',
+                output: [retryUrl],
+              }
+            }
+          }
+        } catch (retryError: any) {
+          console.error('❌ Retry também falhou:', retryError.message)
+        }
+      }
+      
+      throw new Error(
+        'Vella retornou a imagem original da pessoa. ' +
+        'Isso indica que o modelo não conseguiu processar. ' +
+        'Verifique se: (1) A roupa está isolada em fundo branco, ' +
+        '(2) A pessoa está de corpo inteiro, (3) As URLs são públicas.'
+      )
     } else {
       console.log('✅ URL retornada é diferente da imagem original - sucesso!')
     }
