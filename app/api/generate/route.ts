@@ -57,9 +57,15 @@ export async function POST(request: NextRequest) {
     let productImageUrl: string
     let personImageUrl: string
     
+    console.log('🔵 Iniciando upload de imagens...')
+    console.log('🔵 Cloudinary configurado:', !!process.env.CLOUDINARY_CLOUD_NAME)
+    console.log('🔵 Vercel Blob configurado:', !!process.env.BLOB_READ_WRITE_TOKEN)
+    console.log('🔵 Ambiente Vercel:', !!process.env.VERCEL)
+    
     try {
       // Prioridade 1: Cloudinary (se configurado)
       if (process.env.CLOUDINARY_CLOUD_NAME) {
+        console.log('🔵 Usando Cloudinary...')
         const { uploadImage } = await import('@/lib/api/storage')
         const [uploadProduct, uploadPerson] = await Promise.all([
           uploadImage(productImage, 'products'),
@@ -67,109 +73,67 @@ export async function POST(request: NextRequest) {
         ])
         productImageUrl = uploadProduct.url
         personImageUrl = uploadPerson.url
-        console.log('Imagens enviadas para Cloudinary')
+        console.log('✅ Imagens enviadas para Cloudinary')
       } 
-      // Prioridade 2: Vercel Blob Storage (se em produção na Vercel)
-      else if (process.env.VERCEL || process.env.BLOB_READ_WRITE_TOKEN) {
-        console.log('Usando Vercel Blob Storage para upload...')
+      // Prioridade 2: Vercel Blob Storage
+      else {
+        console.log('🔵 Usando Vercel Blob Storage...')
         
-        // Upload direto usando @vercel/blob (mais confiável que API route)
-        const uploadFile = async (file: File): Promise<string> => {
+        const { put } = await import('@vercel/blob')
+        
+        // Função de upload simplificada
+        const uploadFile = async (file: File, prefix: string): Promise<string> => {
           try {
-            const { put } = await import('@vercel/blob')
+            const fileName = `${prefix}-${Date.now()}-${file.name}`
+            console.log(`🔵 Fazendo upload de: ${fileName} (${(file.size / 1024).toFixed(2)}KB)`)
             
-            const blob = await put(file.name, file, {
+            const blob = await put(fileName, file, {
               access: 'public',
               addRandomSuffix: true,
             })
             
+            console.log(`✅ Upload concluído: ${blob.url.substring(0, 80)}...`)
             return blob.url
           } catch (error: any) {
-            console.error('Erro ao fazer upload para Vercel Blob:', error)
+            console.error(`❌ Erro ao fazer upload de ${file.name}:`, error)
+            console.error('❌ Error message:', error.message)
+            console.error('❌ Error stack:', error.stack)
             
-            // Se falhar, tenta via API route como fallback
-            const formData = new FormData()
-            formData.append('file', file)
-            
-            // Usa a URL do request para construir a URL base
-            const requestUrl = request.headers.get('host')
-            const protocol = request.headers.get('x-forwarded-proto') || 'https'
-            const baseUrl = requestUrl 
-              ? `${protocol}://${requestUrl}`
-              : process.env.VERCEL_URL 
-                ? `https://${process.env.VERCEL_URL}`
-                : 'http://localhost:3000'
-            
-            console.log('Tentando upload via API route:', `${baseUrl}/api/upload`)
-            
-            const response = await fetch(`${baseUrl}/api/upload`, {
-              method: 'POST',
-              body: formData,
-            })
-            
-            if (!response.ok) {
-              const errorText = await response.text()
-              console.error('Erro da API de upload:', errorText)
-              let errorData: any = {}
-              try {
-                errorData = JSON.parse(errorText)
-              } catch {
-                errorData = { error: errorText.substring(0, 200) }
-              }
-              throw new Error(errorData.error || 'Erro ao fazer upload')
+            // Verifica se é erro de token não configurado
+            if (error.message?.includes('BLOB_READ_WRITE_TOKEN') || 
+                error.message?.includes('token') ||
+                error.message?.includes('unauthorized')) {
+              throw new Error(
+                'Vercel Blob Storage não configurado. ' +
+                'Configure BLOB_READ_WRITE_TOKEN nas variáveis de ambiente da Vercel. ' +
+                'Veja GUIA_CONFIGURAR_VERCEL_BLOB.md para instruções.'
+              )
             }
             
-            const data = await response.json()
-            return data.url
+            throw error
           }
         }
         
+        // Faz upload das duas imagens em paralelo
         const [uploadProduct, uploadPerson] = await Promise.all([
-          uploadFile(productImage),
-          uploadFile(personImage)
+          uploadFile(productImage, 'product'),
+          uploadFile(personImage, 'person')
         ])
         
         productImageUrl = uploadProduct
         personImageUrl = uploadPerson
-        console.log('Imagens enviadas para Vercel Blob Storage')
-      }
-      // Prioridade 3: Serviço externo gratuito (imgbb.com)
-      else {
-        console.warn('Cloudinary e Vercel Blob não configurados. Tentando imgbb.com...')
-        
-        // Função para upload no imgbb.com (gratuito)
-        const uploadToImgbb = async (file: File): Promise<string> => {
-          const formData = new FormData()
-          const buffer = await file.arrayBuffer()
-          const base64 = Buffer.from(buffer).toString('base64')
-          
-          // imgbb.com API (gratuita, mas requer API key)
-          // Por enquanto, vamos retornar erro claro
-          throw new Error(
-            'Configure Cloudinary ou Vercel Blob Storage. ' +
-            'Base64 não funciona com Vella Try-On. ' +
-            'Veja GUIA_DEPLOY_VERCEL.md para instruções.'
-          )
-        }
-        
-        const [uploadProduct, uploadPerson] = await Promise.all([
-          uploadToImgbb(productImage),
-          uploadToImgbb(personImage)
-        ])
-        
-        productImageUrl = uploadProduct
-        personImageUrl = uploadPerson
+        console.log('✅ Imagens enviadas para Vercel Blob Storage com sucesso')
       }
     } catch (error: any) {
-      console.error('Erro ao fazer upload:', error)
+      console.error('❌ ERRO CRÍTICO ao fazer upload:', error)
+      console.error('❌ Error message:', error.message)
+      console.error('❌ Error stack:', error.stack)
       
-      // NUNCA usar base64 como fallback - Vella não aceita!
       return NextResponse.json(
         { 
           error: 'Erro ao fazer upload das imagens para URL pública. ' +
                  'Vella Try-On requer URLs públicas (não base64). ' +
-                 'Configure Cloudinary ou faça deploy na Vercel. ' +
-                 'Detalhes: ' + error.message
+                 (error.message || 'Erro desconhecido')
         },
         { status: 500 }
       )
