@@ -116,20 +116,28 @@ export async function generateMannequin(
     console.warn('⚠️ Tentando fallback com modelo básico...')
     
     try {
-      console.log('Tentando gerar manequim com modelo básico...')
-      const output = await replicate.run(BASIC_MODEL, {
-        input: {
-          prompt,
-          negative_prompt: 'realistic human face, skin texture, detailed facial features, hair, person, blurry, low quality',
-          num_inference_steps: 40,
-          guidance_scale: 8.0,
-          width: 512,
-          height: 768,
-        },
-      })
+      console.log('🔵 Tentando gerar manequim com modelo básico (Stable Diffusion)...')
+      const fallbackInput = {
+        prompt,
+        negative_prompt: 'realistic human face, skin texture, detailed facial features, hair, person, blurry, low quality, realistic skin',
+        num_inference_steps: 50,
+        guidance_scale: 8.5,
+        width: 512,
+        height: 768,
+      }
+      
+      console.log('🔵 Fallback Input:', JSON.stringify(fallbackInput, null, 2))
+      
+      const output = await replicate.run(BASIC_MODEL, { input: fallbackInput })
 
+      console.log('✅ Modelo básico retornou resultado')
+      console.log('🔵 Output raw:', output)
+      
       let imageUrl: string
       if (Array.isArray(output)) {
+        if (output.length === 0) {
+          throw new Error('Modelo básico retornou array vazio')
+        }
         imageUrl = typeof output[0] === 'string' ? output[0] : (output[0] as any).url || String(output[0])
       } else if (typeof output === 'string') {
         imageUrl = output
@@ -137,11 +145,22 @@ export async function generateMannequin(
         imageUrl = (output as any).url || String(output)
       }
 
-      console.log('Manequim gerado com modelo básico com sucesso:', imageUrl)
+      if (!imageUrl || imageUrl.length === 0) {
+        throw new Error('Modelo básico retornou URL vazia ou inválida')
+      }
+
+      console.log('✅ Manequim gerado com modelo básico com sucesso:', imageUrl.substring(0, 100) + '...')
       return { image: imageUrl }
     } catch (fallbackError: any) {
-      console.error('Erro ao gerar manequim com ambos os modelos:', fallbackError)
-      throw new Error(`Erro ao gerar manequim: ${fallbackError.message}`)
+      console.error('❌ ERRO CRÍTICO: Ambos os modelos falharam!')
+      console.error('❌ SDXL Error:', error.message)
+      console.error('❌ Fallback Error:', fallbackError.message)
+      console.error('❌ Fallback Stack:', fallbackError.stack)
+      throw new Error(
+        `Erro ao gerar manequim: SDXL falhou (${error.message}), ` +
+        `Fallback também falhou (${fallbackError.message}). ` +
+        `Verifique os logs para mais detalhes.`
+      )
     }
   }
 }
