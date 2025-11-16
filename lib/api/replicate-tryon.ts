@@ -136,6 +136,7 @@ export async function generateTryOnWithReplicate(
   try {
     console.log('🔵 Enviando requisição para Vella 1.5...')
     console.log('🔵 Tipo detectado:', garmentType)
+    console.log('🔵 É vestido:', isDress)
     console.log('🔵 Parâmetro usado:', garmentType === 'dress' ? 'dress_image' : 'top_image')
     console.log('🔵 Input completo:', JSON.stringify(input, null, 2))
     
