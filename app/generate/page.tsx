@@ -173,7 +173,7 @@ export default function GeneratePage() {
                 <ul className="text-xs text-gold/70 space-y-1 font-light">
                   <li className="flex items-start gap-2">
                     <span className="text-gold-bright mt-0.5">✓</span>
-                    <span>Pessoa de corpo inteiro (vertical)</span>
+                    <span><strong>Corpo inteiro obrigatório</strong> (da cabeça aos pés)</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-gold-bright mt-0.5">✓</span>
@@ -181,15 +181,26 @@ export default function GeneratePage() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-gold-bright mt-0.5">✓</span>
-                    <span>Pose clara e natural</span>
+                    <span>Pose clara e natural (vertical)</span>
+                  </li>
+                  <li className="flex items-start gap-2 mt-2">
+                    <span className="text-red-400 mt-0.5">⚠</span>
+                    <span className="text-red-300">Evite cortes no meio do corpo</span>
                   </li>
                 </ul>
               </div>
             </div>
-            <div className="mt-4 p-3 bg-gold/10 border border-gold/20 rounded-lg">
-              <p className="text-xs text-gold/80 font-light text-center">
-                <span className="font-semibold text-gold-bright">Dica:</span> Imagens de qualidade garantem melhores resultados na geração!
-              </p>
+            <div className="mt-4 space-y-2">
+              <div className="p-3 bg-gold/10 border border-gold/20 rounded-lg">
+                <p className="text-xs text-gold/80 font-light text-center">
+                  <span className="font-semibold text-gold-bright">Dica:</span> Imagens de qualidade garantem melhores resultados na geração!
+                </p>
+              </div>
+              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                <p className="text-xs text-red-300 font-light text-center">
+                  <span className="font-semibold text-red-400">Importante:</span> A foto da pessoa deve mostrar o corpo INTEIRO (da cabeça aos pés), especialmente para vestidos longos!
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
