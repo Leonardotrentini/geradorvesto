@@ -185,30 +185,73 @@ export async function generateMannequin(
       const fallbackInput = {
         prompt,
         negative_prompt: negativePrompt,
-        num_inference_steps: 30, // Reduzido para ser mais rápido
-        guidance_scale: 7.5,
-        width: 512, // Reduzido para evitar erros
+        num_inference_steps: 50, // Aumentado para melhor qualidade
+        guidance_scale: 9.0, // Aumentado para melhor aderência
+        width: 512,
         height: 768,
+        scheduler: 'DPMSolverMultistep',
       }
       
       console.log('🔵 SDXL Fallback Input:', JSON.stringify(fallbackInput, null, 2))
       
-      // Tenta usar SDXL diretamente
-      const output = await replicate.run(SDXL_MODEL, { input: fallbackInput })
+      // Tenta usar SDXL com processamento assíncrono
+      const fallbackPrediction = await replicate.predictions.create({
+        version: await getSDXLVersion(replicate),
+        input: fallbackInput,
+      })
+      
+      console.log('🔵 SDXL Fallback Prediction ID:', fallbackPrediction.id)
+      
+      // Polling até completar
+      let fallbackFinal = fallbackPrediction
+      const maxFallbackAttempts = 30
+      let fallbackAttempts = 0
+      
+      while (fallbackFinal.status !== 'succeeded' && fallbackFinal.status !== 'failed' && fallbackAttempts < maxFallbackAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        fallbackFinal = await replicate.predictions.get(fallbackPrediction.id)
+        fallbackAttempts++
+        console.log(`🔵 SDXL Fallback ${fallbackAttempts}/${maxFallbackAttempts} - Status: ${fallbackFinal.status}`)
+      }
+      
+      if (fallbackFinal.status === 'failed') {
+        throw new Error(`SDXL falhou: ${fallbackFinal.error || 'Erro desconhecido'}`)
+      }
+      
+      if (fallbackFinal.status !== 'succeeded') {
+        throw new Error(`SDXL não completou a tempo. Status: ${fallbackFinal.status}`)
+      }
+      
+      const output = fallbackFinal.output
 
       console.log('✅ SDXL retornou resultado')
       console.log('🔵 Output raw:', output)
+      console.log('🔵 Output type:', typeof output)
       
+      // Processa o output do SDXL
       let imageUrl: string
       if (Array.isArray(output)) {
         if (output.length === 0) {
           throw new Error('SDXL retornou array vazio')
         }
-        imageUrl = typeof output[0] === 'string' ? output[0] : (output[0] as any).url || String(output[0])
+        const firstItem = output[0]
+        if (typeof firstItem === 'string') {
+          imageUrl = firstItem
+        } else if (firstItem && typeof (firstItem as any).url === 'function') {
+          imageUrl = (firstItem as any).url()
+        } else if (firstItem && (firstItem as any).url) {
+          imageUrl = (firstItem as any).url
+        } else {
+          imageUrl = String(firstItem)
+        }
       } else if (typeof output === 'string') {
         imageUrl = output
+      } else if (output && typeof (output as any).url === 'function') {
+        imageUrl = (output as any).url()
+      } else if (output && (output as any).url) {
+        imageUrl = (output as any).url
       } else {
-        imageUrl = (output as any).url || String(output)
+        imageUrl = String(output)
       }
 
       if (!imageUrl || imageUrl.length === 0) {
