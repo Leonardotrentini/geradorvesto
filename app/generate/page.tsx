@@ -7,8 +7,9 @@ import { GenderSelector } from '@/components/avatar/GenderSelector'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Gender } from '@/types/avatar'
-import { Sparkles, Loader2 } from 'lucide-react'
+import { Sparkles, Loader2, Info, CheckCircle2 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import Image from 'next/image'
 
 export default function GeneratePage() {
   const [productImage, setProductImage] = useState<File | null>(null)
@@ -107,6 +108,92 @@ export default function GeneratePage() {
             Gere 2 variações: Avatar vestindo a peça + Manequim de loja
           </p>
         </div>
+
+        {/* Template/Exemplos */}
+        <Card className="mb-8 border-gold/30 bg-[#1a4d3a]/60">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-gold">
+              <Info className="w-5 h-5" />
+              Como enviar as imagens corretamente
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Exemplo 1: Roupa */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-gold-bright">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span className="font-semibold">Foto da Roupa</span>
+                </div>
+                <div className="relative aspect-square bg-white rounded-lg border-2 border-gold/30 overflow-hidden">
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center p-4">
+                      <div className="w-24 h-32 mx-auto mb-3 bg-gradient-to-b from-gray-200 to-gray-300 rounded border-2 border-gray-400 relative">
+                        <div className="absolute top-2 left-2 right-2 h-8 bg-gray-400 rounded"></div>
+                        <div className="absolute bottom-2 left-2 right-2 h-16 bg-gray-500 rounded"></div>
+                      </div>
+                      <p className="text-xs text-gray-600 font-medium">Roupa isolada</p>
+                      <p className="text-xs text-gray-500">Fundo branco/transparente</p>
+                    </div>
+                  </div>
+                </div>
+                <ul className="text-xs text-gold/70 space-y-1 font-light">
+                  <li className="flex items-start gap-2">
+                    <span className="text-gold-bright mt-0.5">✓</span>
+                    <span>Roupa isolada em fundo branco</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-gold-bright mt-0.5">✓</span>
+                    <span>Boa iluminação e nitidez</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-gold-bright mt-0.5">✓</span>
+                    <span>Roupa visível e completa</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Exemplo 2: Pessoa */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-gold-bright">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span className="font-semibold">Foto da Pessoa</span>
+                </div>
+                <div className="relative aspect-[3/4] bg-gradient-to-b from-gray-100 to-gray-200 rounded-lg border-2 border-gold/30 overflow-hidden">
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center p-4">
+                      <div className="w-16 h-32 mx-auto mb-3 bg-gradient-to-b from-pink-200 to-pink-300 rounded-full relative">
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-12 bg-pink-400 rounded-full"></div>
+                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-20 h-24 bg-pink-500 rounded-t-full"></div>
+                      </div>
+                      <p className="text-xs text-gray-600 font-medium">Corpo inteiro</p>
+                      <p className="text-xs text-gray-500">Boa iluminação</p>
+                    </div>
+                  </div>
+                </div>
+                <ul className="text-xs text-gold/70 space-y-1 font-light">
+                  <li className="flex items-start gap-2">
+                    <span className="text-gold-bright mt-0.5">✓</span>
+                    <span>Pessoa de corpo inteiro (vertical)</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-gold-bright mt-0.5">✓</span>
+                    <span>Boa iluminação e foco</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-gold-bright mt-0.5">✓</span>
+                    <span>Pose clara e natural</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <div className="mt-4 p-3 bg-gold/10 border border-gold/20 rounded-lg">
+              <p className="text-xs text-gold/80 font-light text-center">
+                <span className="font-semibold text-gold-bright">Dica:</span> Imagens de qualidade garantem melhores resultados na geração!
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Left Column - Upload */}
