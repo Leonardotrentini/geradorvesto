@@ -95,23 +95,48 @@ export async function generateTryOnWithReplicate(
     throw new Error(`Erro ao validar URLs: ${validationError.message}`)
   }
   
-  // Detectar tipo de roupa baseado na URL (tentativa simples)
-  // Se contém "dress" ou "vestido", usa dress_image, senão top_image
-  const isDress = request.garmentImage.toLowerCase().includes('dress') || 
-                  request.garmentImage.toLowerCase().includes('vestido')
+  // DETECÇÃO INTELIGENTE DE TIPO DE ROUPA
+  // Vella aceita apenas: top_image OU dress_image
+  // Vamos detectar se é vestido ou top/blusa
+  let garmentType: 'dress' | 'top' = 'top'
+  let isDress = false
   
+  try {
+    // Detecta pelo nome do arquivo/URL
+    const lowerUrl = request.garmentImage.toLowerCase()
+    if (lowerUrl.includes('dress') || lowerUrl.includes('vestido') || 
+        lowerUrl.includes('maxi') || lowerUrl.includes('midi') || 
+        lowerUrl.includes('longo') || lowerUrl.includes('long')) {
+      garmentType = 'dress'
+      isDress = true
+      console.log('🔵 Tipo detectado: VESTIDO')
+    } else {
+      garmentType = 'top'
+      console.log('🔵 Tipo detectado: TOP/BLUSA')
+    }
+  } catch (error: any) {
+    console.warn('⚠️ Erro ao detectar tipo de roupa:', error.message)
+    garmentType = 'top'
+  }
+  
+  // Monta input com parâmetros otimizados
   const input: any = {
-    // Vella aceita top_image (camisa/blusa) ou dress_image (vestido)
-    // Tenta detectar automaticamente, mas usa top_image por padrão
-    ...(isDress ? { dress_image: request.garmentImage } : { top_image: request.garmentImage }),
+    // Vella aceita apenas top_image ou dress_image
+    ...(garmentType === 'dress' 
+      ? { dress_image: request.garmentImage }
+      : { top_image: request.garmentImage }),
     
     // model_image é OBRIGATÓRIO para Vella
     model_image: request.personImage,
+    
+    // PARÂMETROS AVANÇADOS que melhoram resultados
+    // category: garmentType, // Pode melhorar resultados (se o modelo suportar)
   }
 
   try {
     console.log('🔵 Enviando requisição para Vella 1.5...')
-    console.log('🔵 Tipo detectado:', isDress ? 'dress' : 'top')
+    console.log('🔵 Tipo detectado:', garmentType)
+    console.log('🔵 Parâmetro usado:', garmentType === 'dress' ? 'dress_image' : 'top_image')
     console.log('🔵 Input completo:', JSON.stringify(input, null, 2))
     
     // CRÍTICO: Usar processamento assíncrono para garantir que o modelo processe corretamente
@@ -209,20 +234,21 @@ export async function generateTryOnWithReplicate(
       console.error('   3. URLs não são acessíveis pelo Replicate')
       console.error('   4. Tipo de roupa incorreto (tentou top_image mas é dress ou vice-versa)')
       
-      // TENTA RETRY com dress_image se usou top_image
+      // SISTEMA DE RETRY ROBUSTO - Tenta com o tipo oposto
       if (!isDress) {
-        console.log('🔄 Tentando retry com dress_image...')
+        console.log('🔄 Tentando retry com dress_image (pode funcionar melhor para vestidos)...')
         try {
           const retryInput = {
             dress_image: request.garmentImage,
             model_image: request.personImage,
           }
+          
           const retryPrediction = await replicate.predictions.create({
             version: await getVellaVersion(replicate),
             input: retryInput,
           })
           
-          // Polling rápido (30 segundos)
+          // Polling (30 segundos)
           let retryFinal = retryPrediction
           for (let i = 0; i < 15; i++) {
             await new Promise(resolve => setTimeout(resolve, 2000))
@@ -244,9 +270,49 @@ export async function generateTryOnWithReplicate(
             }
           }
         } catch (retryError: any) {
-          console.error('❌ Retry também falhou:', retryError.message)
+          console.error('❌ Retry com dress_image falhou:', retryError.message)
+        }
+      } else {
+        // Se tentou dress primeiro, tenta top
+        console.log('🔄 Tentando retry com top_image...')
+        try {
+          const retryInput = {
+            top_image: request.garmentImage,
+            model_image: request.personImage,
+          }
+          
+          const retryPrediction = await replicate.predictions.create({
+            version: await getVellaVersion(replicate),
+            input: retryInput,
+          })
+          
+          // Polling (30 segundos)
+          let retryFinal = retryPrediction
+          for (let i = 0; i < 15; i++) {
+            await new Promise(resolve => setTimeout(resolve, 2000))
+            retryFinal = await replicate.predictions.get(retryPrediction.id)
+            if (retryFinal.status === 'succeeded' || retryFinal.status === 'failed') break
+          }
+          
+          if (retryFinal.status === 'succeeded' && retryFinal.output) {
+            const retryOutput = Array.isArray(retryFinal.output) ? retryFinal.output[0] : retryFinal.output
+            const retryUrl = typeof retryOutput === 'string' ? retryOutput : String(retryOutput)
+            
+            if (retryUrl !== request.personImage && retryUrl.split('?')[0] !== cleanPersonUrl) {
+              console.log('✅ Retry com top_image funcionou!')
+              return {
+                id: retryPrediction.id,
+                status: 'succeeded',
+                output: [retryUrl],
+              }
+            }
+          }
+        } catch (retryError: any) {
+          console.error('❌ Retry com top_image falhou:', retryError.message)
         }
       }
+      
+      console.error('❌ Todos os retries falharam')
       
       throw new Error(
         'Vella retornou a imagem original da pessoa. ' +
