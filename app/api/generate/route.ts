@@ -312,16 +312,14 @@ export async function GET(request: NextRequest) {
         output: tryOnStatus.output,
         error: tryOnStatus.error,
       })
-    } catch {
-      // Se não for try-on, tenta como geração normal
-      const status = await checkGenerationStatus(jobId)
-
+    } catch (error: any) {
+      // Se não for try-on, retorna erro
+      console.error('Erro ao verificar status do try-on:', error)
       return NextResponse.json({
-        success: true,
-        status: status.status,
-        output: status.output,
-        error: status.error,
-      })
+        success: false,
+        status: 'failed',
+        error: 'Job ID não encontrado ou inválido',
+      }, { status: 404 })
     }
   } catch (error: any) {
     return NextResponse.json(
