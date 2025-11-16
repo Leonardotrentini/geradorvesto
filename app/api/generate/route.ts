@@ -1,16 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { generationConfigSchema } from '@/lib/utils/validation'
-import { generateFashionPrompt, checkGenerationStatus } from '@/lib/api/replicate'
-import { generateWithStability } from '@/lib/api/stability'
 import { generateTryOnWithReplicate, checkTryOnStatus } from '@/lib/api/replicate-tryon'
 import { generateMannequin } from '@/lib/api/mannequin'
-
-// Função auxiliar para converter File para base64 URL
-async function fileToDataURL(file: File): Promise<string> {
-  const buffer = await file.arrayBuffer()
-  const base64 = Buffer.from(buffer).toString('base64')
-  return `data:${file.type};base64,${base64}`
-}
 
 export async function POST(request: NextRequest) {
   try {
