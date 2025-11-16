@@ -60,8 +60,21 @@ export async function generateMannequin(
     mannequinStyle = 'realistic female mannequin, human-like proportions, elegant pose, graceful stance, luxury retail display'
   }
   
-  // Prompt mais específico e direto - FOCO EM MANEQUIM
-  const prompt = `professional fashion photography, ${genderText} store mannequin, ${mannequinStyle}, wearing elegant fashion clothing, ${backgroundStyle}, high-end retail display, studio lighting, 8k resolution, photorealistic, mannequin display, fashion boutique`
+  // Prompt otimizado baseado no briefing técnico
+  const { generateMannequinPrompt, generateMannequinNegativePrompt } = await import('@/lib/utils/promptGenerator')
+  const { detectGarmentColorAndType } = await import('@/lib/utils/promptGenerator')
+  
+  // Detecta cor e tipo da roupa
+  const garmentInfo = detectGarmentColorAndType(request.garmentImage)
+  const garmentType = garmentInfo.type || 'dress'
+  const garmentColor = garmentInfo.color || 'elegant'
+  
+  // Gera prompt otimizado
+  const prompt = generateMannequinPrompt({
+    typeOfGarment: garmentType as any,
+    color: garmentColor,
+    gender: request.gender,
+  })
 
   console.log('🔵 Iniciando geração de manequim...')
   console.log('🔵 Gênero:', request.gender)
@@ -72,7 +85,7 @@ export async function generateMannequin(
     console.log('🔵 Tentando gerar manequim com Stable Diffusion (básico)...')
     const input = {
       prompt,
-      negative_prompt: 'realistic human face, skin texture, detailed facial features, hair, person, blurry, low quality, distorted, deformed, ugly, bad anatomy, multiple people, realistic skin, human eyes, human hands',
+      negative_prompt: generateMannequinNegativePrompt(),
       num_inference_steps: 40, // Reduzido para ser mais rápido e confiável
       guidance_scale: 8.5, // Aumentado para melhor aderência ao prompt
       width: 512, // Dimensões padrão (mais confiável)
@@ -146,7 +159,7 @@ export async function generateMannequin(
       console.log('🔵 Tentando gerar manequim com SDXL (fallback)...')
       const fallbackInput = {
         prompt,
-        negative_prompt: 'realistic human face, skin texture, detailed facial features, hair, person, blurry, low quality, realistic skin, human eyes, human hands',
+        negative_prompt: generateMannequinNegativePrompt(),
         num_inference_steps: 30, // Reduzido para ser mais rápido
         guidance_scale: 7.5,
         width: 512, // Reduzido para evitar erros

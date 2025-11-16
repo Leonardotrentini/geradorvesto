@@ -96,7 +96,7 @@ export async function advancedValidation(
     isPersonImage = false,
     isGarmentImage = false,
     minWidth = isPersonImage ? 768 : 1024,
-    minHeight = isPersonImage ? 1024 : 1024,
+    minHeight = isPersonImage ? 1500 : 1024, // Altura mínima 1500px para pessoa (conforme briefing)
   } = options
 
   const errors: string[] = []
@@ -114,13 +114,31 @@ export async function advancedValidation(
       const height = img.height
       const aspectRatio = width / height
 
-      // 1. Validação de dimensões
-      if (width < minWidth || height < minHeight) {
-        errors.push(`Dimensões insuficientes. Mínimo: ${minWidth}x${minHeight}px. Atual: ${width}x${height}px`)
-        score -= 3
-      } else if (width < minWidth * 1.5 || height < minHeight * 1.5) {
-        warnings.push(`Resolução baixa. Recomendado: ${minWidth * 2}x${minHeight * 2}px`)
-        score -= 1
+      // 1. Validação de dimensões (mais rigorosa para pessoa)
+      if (isPersonImage) {
+        // Para pessoa: altura mínima 1500px (conforme briefing)
+        const minHeightPerson = 1500
+        if (height < minHeightPerson) {
+          errors.push(`Altura insuficiente para pessoa. Mínimo: ${minHeightPerson}px (ideal 2048px+). Atual: ${height}px`)
+          score -= 3
+        } else if (height < 2048) {
+          warnings.push(`Altura abaixo do ideal. Recomendado: 2048px+ para melhor qualidade. Atual: ${height}px`)
+          score -= 1
+        }
+        // Largura mínima proporcional
+        if (width < 768) {
+          errors.push(`Largura insuficiente. Mínimo: 768px. Atual: ${width}px`)
+          score -= 2
+        }
+      } else {
+        // Para roupa: dimensões padrão
+        if (width < minWidth || height < minHeight) {
+          errors.push(`Dimensões insuficientes. Mínimo: ${minWidth}x${minHeight}px (ideal 2048px+). Atual: ${width}x${height}px`)
+          score -= 3
+        } else if (width < minWidth * 1.5 || height < minHeight * 1.5) {
+          warnings.push(`Resolução baixa. Recomendado: ${minWidth * 2}x${minHeight * 2}px`)
+          score -= 1
+        }
       }
 
       // 2. Validação de proporção (para pessoa)
