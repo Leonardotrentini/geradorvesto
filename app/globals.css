@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Cormorant+Garamond:wght@300;400;600;700&display=swap');
+
+@layer base {
+  :root {
+    --background: 26 35% 20%;
+    --foreground: 45 100% 65%;
+    --card: 26 35% 15%;
+    --card-foreground: 45 100% 70%;
+    --popover: 26 35% 15%;
+    --popover-foreground: 45 100% 70%;
+    --primary: 45 100% 60%;
+    --primary-foreground: 26 35% 20%;
+    --secondary: 26 35% 25%;
+    --secondary-foreground: 45 100% 70%;
+    --muted: 26 35% 25%;
+    --muted-foreground: 45 80% 55%;
+    --accent: 45 100% 55%;
+    --accent-foreground: 26 35% 20%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 45 60% 45%;
+    --input: 26 35% 25%;
+    --ring: 45 100% 60%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-[#1a4d3a] text-[#d4af37] font-serif;
+    background-image: 
+      radial-gradient(circle at 20% 50%, rgba(212, 175, 55, 0.03) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(212, 175, 55, 0.03) 0%, transparent 50%);
+  }
+}
+
+@layer utilities {
+  .text-gold {
+    color: #d4af37;
+    text-shadow: 
+      0 0 10px rgba(212, 175, 55, 0.3),
+      0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+  
+  .text-gold-bright {
+    color: #f4d03f;
+    text-shadow: 
+      0 0 15px rgba(244, 208, 63, 0.4),
+      0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+  
+  .border-gold {
+    border-color: #d4af37;
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+  }
+  
+  .bg-gold-gradient {
+    background: linear-gradient(135deg, #d4af37 0%, #f4d03f 100%);
+  }
+  
+  .bg-vesto-green {
+    background-color: #1a4d3a;
+  }
+  
+  .font-vesto {
+    font-family: 'Playfair Display', 'Cormorant Garamond', serif;
+  }
+}
