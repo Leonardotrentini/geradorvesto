@@ -33,7 +33,7 @@ export function generateNegativePrompt(): string {
  */
 export function generateMannequinPrompt(config: PromptConfig): string {
   const garmentType = getGarmentTypeText(config.typeOfGarment)
-  const colorDesc = config.color || config.description || 'the uploaded garment'
+  const colorDesc = config.color || config.description || 'elegant fashion garment'
   const genderText = config.gender === 'homem' ? 'male' : 'female'
   
   // Background e estilo adaptados ao gênero
@@ -48,14 +48,15 @@ export function generateMannequinPrompt(config: PromptConfig): string {
     mannequinStyle = 'realistic female mannequin, human-like proportions, elegant pose, graceful stance, luxury retail display'
   }
   
-  return `High-end fashion boutique interior, luxurious mannequins and clothes. Show a single ${genderText} mannequin wearing the uploaded ${garmentType} in ${colorDesc}, ${mannequinStyle}, ${backgroundStyle}, lit by elegant warm store lighting, surrounded by premium dresses and accessories, golden details, glass shelves, modern fashion retail design, ultra realistic, 4k, sharp details.`
+  // Prompt mais direto e focado em MANEQUIM (não pessoa)
+  return `professional product photography, ${genderText} store mannequin, ${mannequinStyle}, wearing ${colorDesc} ${garmentType}, ${backgroundStyle}, mannequin display, fashion retail, studio lighting, high quality, 4k, sharp details, mannequin only, no human face, no realistic skin`
 }
 
 /**
  * Gera negative prompt para manequim
  */
 export function generateMannequinNegativePrompt(): string {
-  return `no people, no faces, no realistic human face, no skin texture, no detailed facial features, no hair, no person, no blur, no cartoon style, no low-resolution, no watermark, no text, no logos, no extra limbs, no deformed mannequin, no multiple mannequins`
+  return `no people, no faces, no realistic human face, no skin texture, no detailed facial features, no hair, no person, no blur, no cartoon style, no low-resolution, no watermark, no text, no logos, no extra limbs, no deformed mannequin, no multiple mannequins, no realistic eyes, no realistic hands, no human body parts, no living person, mannequin only, display mannequin`
 }
 
 /**

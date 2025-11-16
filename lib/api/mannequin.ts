@@ -25,6 +25,25 @@ const BASIC_MODEL = 'stability-ai/stable-diffusion:db21e45d3f7023abc2a46ee38a239
 const SDXL_MODEL = 'stability-ai/sdxl' // Fallback se básico falhar
 
 /**
+ * Obtém versão do SDXL
+ */
+async function getSDXLVersion(replicate: any): Promise<string> {
+  try {
+    const model = await replicate.models.get('stability-ai', 'sdxl')
+    const latestVersion = model.latest_version
+    if (!latestVersion) {
+      throw new Error('Não foi possível obter versão do SDXL')
+    }
+    console.log('🔵 Versão do SDXL:', latestVersion.id)
+    return latestVersion.id
+  } catch (error: any) {
+    console.warn('⚠️ Não foi possível obter versão do SDXL:', error.message)
+    // Tenta usar o nome do modelo diretamente
+    throw new Error('Não foi possível obter versão do modelo SDXL')
+  }
+}
+
+/**
  * Gera imagem de manequim de loja vestindo a peça
  * 
  * NOTA: Por enquanto, gera um manequim com roupa similar
@@ -91,10 +110,11 @@ export async function generateMannequin(
     const input = {
       prompt,
       negative_prompt: negativePrompt,
-      num_inference_steps: 40, // Reduzido para ser mais rápido e confiável
-      guidance_scale: 8.5, // Aumentado para melhor aderência ao prompt
+      num_inference_steps: 50, // Aumentado para melhor qualidade
+      guidance_scale: 9.0, // Aumentado para melhor aderência ao prompt
       width: 512, // Dimensões padrão (mais confiável)
       height: 768, // Proporção vertical para manequim
+      scheduler: 'DPMSolverMultistep', // Scheduler mais confiável
     }
     
     console.log('🔵 Basic Model Input:', JSON.stringify(input, null, 2))

@@ -204,8 +204,18 @@ export async function POST(request: NextRequest) {
       }
 
       if (!avatarImage) {
-        throw new Error('Erro ao gerar avatar vestindo a peça - nenhuma imagem retornada')
+        console.error('❌ ERRO CRÍTICO: Avatar não foi gerado')
+        throw new Error('Erro ao gerar avatar vestindo a peça - nenhuma imagem retornada. Verifique se as imagens estão corretas e tente novamente.')
       }
+      
+      // Valida se a imagem do avatar é diferente da original
+      if (avatarImage === personImageUrl || avatarImage.split('?')[0] === personImageUrl.split('?')[0]) {
+        console.error('❌ ERRO CRÍTICO: Avatar retornado é igual à imagem original!')
+        console.error('❌ Isso significa que o Vella não processou a imagem.')
+        throw new Error('O avatar gerado é igual à imagem original. Isso indica que o modelo não conseguiu processar. Verifique se: (1) A roupa está isolada em fundo branco, (2) A pessoa está de corpo inteiro, (3) As imagens são de alta qualidade.')
+      }
+      
+      console.log('✅ Avatar validado e diferente da imagem original')
 
       // Variação 2: Manequim de loja
       console.log('🔵 ========================================')
@@ -213,20 +223,48 @@ export async function POST(request: NextRequest) {
       console.log('🔵 ========================================')
       let mannequinImage: string | null = null
       
-      try {
-        const mannequinResult = await generateMannequin({
-          garmentImage: productImageUrl,
-          gender: gender as 'homem' | 'mulher',
-        })
-        mannequinImage = mannequinResult.image
-        console.log('✅ Manequim gerado com sucesso:', mannequinImage.substring(0, 100) + '...')
-      } catch (error: any) {
-        console.error('❌ ERRO ao gerar manequim:', error)
-        console.error('❌ Error message:', error.message)
-        console.error('❌ Error stack:', error.stack)
-        // Se falhar, usa uma imagem placeholder ou tenta novamente
-        // Por enquanto, vamos deixar null e retornar só o avatar
-        console.warn('⚠️ Manequim não foi gerado, retornando apenas avatar')
+      // Tenta gerar manequim com retry (até 3 tentativas)
+      let mannequinAttempts = 0
+      const maxMannequinAttempts = 3
+      
+      while (!mannequinImage && mannequinAttempts < maxMannequinAttempts) {
+        mannequinAttempts++
+        console.log(`🔵 Tentativa ${mannequinAttempts}/${maxMannequinAttempts} de gerar manequim...`)
+        
+        try {
+          const mannequinResult = await generateMannequin({
+            garmentImage: productImageUrl,
+            gender: gender as 'homem' | 'mulher',
+          })
+          
+          if (mannequinResult && mannequinResult.image && mannequinResult.image.length > 0) {
+            mannequinImage = mannequinResult.image
+            console.log('✅ Manequim gerado com sucesso na tentativa', mannequinAttempts)
+            console.log('✅ URL:', mannequinImage.substring(0, 100) + '...')
+            break
+          } else {
+            console.warn(`⚠️ Tentativa ${mannequinAttempts}: Manequim retornou sem imagem`)
+            if (mannequinAttempts < maxMannequinAttempts) {
+              await new Promise(resolve => setTimeout(resolve, 2000)) // Aguarda 2s antes de tentar novamente
+            }
+          }
+        } catch (error: any) {
+          console.error(`❌ ERRO na tentativa ${mannequinAttempts} ao gerar manequim:`, error)
+          console.error('❌ Error message:', error.message)
+          console.error('❌ Error stack:', error.stack)
+          
+          if (mannequinAttempts < maxMannequinAttempts) {
+            console.log(`🔄 Aguardando 3 segundos antes de tentar novamente...`)
+            await new Promise(resolve => setTimeout(resolve, 3000))
+          } else {
+            console.error('❌ Todas as tentativas de gerar manequim falharam')
+          }
+        }
+      }
+      
+      if (!mannequinImage) {
+        console.error('❌ ERRO CRÍTICO: Não foi possível gerar manequim após', maxMannequinAttempts, 'tentativas')
+        // Não retorna erro, apenas deixa null para mostrar mensagem no frontend
       }
 
       const allImages = [avatarImage]
