@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Gender } from '@/types/avatar'
 import { Sparkles, Loader2, Info, CheckCircle2 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import Image from 'next/image'
 
 export default function GeneratePage() {
   const [productImage, setProductImage] = useState<File | null>(null)
