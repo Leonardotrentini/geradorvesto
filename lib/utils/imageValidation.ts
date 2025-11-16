@@ -179,15 +179,18 @@ export function validateFullBodyImage(file: File): Promise<{ isFullBody: boolean
       const aspectRatio = img.width / img.height
       
       // Imagens de corpo inteiro geralmente têm aspect ratio próximo de 2:3 ou 3:4 (vertical)
-      // Ou 4:3, 3:2 (horizontal para corpo inteiro deitado)
-      const isFullBody = aspectRatio >= 0.5 && aspectRatio <= 1.5
+      // Aceita até 1.0 (quadrada) se altura for suficiente
+      // Horizontal (aspectRatio > 1.0) geralmente não é corpo inteiro
+      const isFullBody = aspectRatio >= 0.5 && aspectRatio <= 1.0 && img.height >= 800
       
       resolve({
         isFullBody,
         aspectRatio,
         suggestion: isFullBody 
           ? undefined 
-          : 'Para melhores resultados, use uma foto de corpo inteiro da pessoa/modelo',
+          : aspectRatio > 1.0
+          ? 'Foto horizontal não é adequada. Use foto vertical (proporção 2:3 ou 3:4)'
+          : 'Para melhores resultados, use uma foto vertical de corpo inteiro (proporção 2:3 ou 3:4)',
       })
     }
 

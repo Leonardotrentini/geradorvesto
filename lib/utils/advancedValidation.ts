@@ -126,9 +126,15 @@ export async function advancedValidation(
       // 2. Validação de proporção (para pessoa)
       if (isPersonImage) {
         // Corpo inteiro geralmente tem proporção vertical (aspectRatio < 0.8)
-        if (aspectRatio > 0.8) {
-          errors.push('Imagem não parece ser de corpo inteiro. Use foto vertical (proporção 2:3 ou 3:4)')
-          score -= 2
+        // Mas aceita até 1.0 (quadrada) se altura for suficiente
+        if (aspectRatio > 1.0) {
+          // Horizontal - definitivamente não é corpo inteiro
+          errors.push('Imagem horizontal não é adequada. Use foto vertical (proporção 2:3 ou 3:4)')
+          score -= 3
+        } else if (aspectRatio > 0.8 && height < 1200) {
+          // Quadrada ou quase - avisa mas não bloqueia se altura for boa
+          warnings.push('Foto quadrada pode não ser ideal. Recomendado: foto vertical (proporção 2:3 ou 3:4) para melhor resultado')
+          score -= 1
         } else if (height < 1000) {
           errors.push('Altura insuficiente para corpo inteiro. Mínimo: 1000px')
           score -= 2
