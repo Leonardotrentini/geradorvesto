@@ -73,27 +73,55 @@ export async function POST(request: NextRequest) {
       else if (process.env.VERCEL || process.env.BLOB_READ_WRITE_TOKEN) {
         console.log('Usando Vercel Blob Storage para upload...')
         
-        // Upload via API route interna
-        const uploadFile = async (file: File) => {
-          const formData = new FormData()
-          formData.append('file', file)
-          
-          const baseUrl = process.env.VERCEL_URL 
-            ? `https://${process.env.VERCEL_URL}` 
-            : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-          
-          const response = await fetch(`${baseUrl}/api/upload`, {
-            method: 'POST',
-            body: formData,
-          })
-          
-          if (!response.ok) {
-            const error = await response.json()
-            throw new Error(error.error || 'Erro ao fazer upload')
+        // Upload direto usando @vercel/blob (mais confiável que API route)
+        const uploadFile = async (file: File): Promise<string> => {
+          try {
+            const { put } = await import('@vercel/blob')
+            
+            const blob = await put(file.name, file, {
+              access: 'public',
+              addRandomSuffix: true,
+            })
+            
+            return blob.url
+          } catch (error: any) {
+            console.error('Erro ao fazer upload para Vercel Blob:', error)
+            
+            // Se falhar, tenta via API route como fallback
+            const formData = new FormData()
+            formData.append('file', file)
+            
+            // Usa a URL do request para construir a URL base
+            const requestUrl = request.headers.get('host')
+            const protocol = request.headers.get('x-forwarded-proto') || 'https'
+            const baseUrl = requestUrl 
+              ? `${protocol}://${requestUrl}`
+              : process.env.VERCEL_URL 
+                ? `https://${process.env.VERCEL_URL}`
+                : 'http://localhost:3000'
+            
+            console.log('Tentando upload via API route:', `${baseUrl}/api/upload`)
+            
+            const response = await fetch(`${baseUrl}/api/upload`, {
+              method: 'POST',
+              body: formData,
+            })
+            
+            if (!response.ok) {
+              const errorText = await response.text()
+              console.error('Erro da API de upload:', errorText)
+              let errorData: any = {}
+              try {
+                errorData = JSON.parse(errorText)
+              } catch {
+                errorData = { error: errorText.substring(0, 200) }
+              }
+              throw new Error(errorData.error || 'Erro ao fazer upload')
+            }
+            
+            const data = await response.json()
+            return data.url
           }
-          
-          const data = await response.json()
-          return data.url
         }
         
         const [uploadProduct, uploadPerson] = await Promise.all([
