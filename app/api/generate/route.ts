@@ -205,9 +205,11 @@ export async function POST(request: NextRequest) {
       const gender = config.gender || 'mulher'
       
       // Variação 1: Avatar vestindo a peça
-      console.log('Gerando variação 1: Avatar vestindo a peça...')
-      console.log('Product Image URL:', productImageUrl.substring(0, 100) + '...')
-      console.log('Person Image URL:', personImageUrl.substring(0, 100) + '...')
+      console.log('🔵 ========================================')
+      console.log('🔵 GERANDO VARIAÇÃO 1: AVATAR VESTINDO A PEÇA')
+      console.log('🔵 ========================================')
+      console.log('🔵 Product Image URL:', productImageUrl.substring(0, 100) + '...')
+      console.log('🔵 Person Image URL:', personImageUrl.substring(0, 100) + '...')
       
       let avatarImage: string | null = null
       try {
@@ -216,8 +218,8 @@ export async function POST(request: NextRequest) {
           personImage: personImageUrl,
         })
 
-        console.log('Avatar result status:', avatarResult.status)
-        console.log('Avatar result output:', avatarResult.output)
+        console.log('✅ Avatar result status:', avatarResult.status)
+        console.log('✅ Avatar result output:', avatarResult.output)
 
         // Processa resultado do avatar
         if (avatarResult.status === 'succeeded' && avatarResult.output) {
@@ -252,7 +254,9 @@ export async function POST(request: NextRequest) {
       }
 
       // Variação 2: Manequim de loja
-      console.log('Gerando variação 2: Manequim de loja...')
+      console.log('🔵 ========================================')
+      console.log('🔵 GERANDO VARIAÇÃO 2: MANEQUIM DE LOJA')
+      console.log('🔵 ========================================')
       let mannequinImage: string | null = null
       
       try {
@@ -261,12 +265,14 @@ export async function POST(request: NextRequest) {
           gender: gender as 'homem' | 'mulher',
         })
         mannequinImage = mannequinResult.image
-        console.log('Manequim gerado com sucesso')
+        console.log('✅ Manequim gerado com sucesso:', mannequinImage.substring(0, 100) + '...')
       } catch (error: any) {
-        console.error('Erro ao gerar manequim:', error)
+        console.error('❌ ERRO ao gerar manequim:', error)
+        console.error('❌ Error message:', error.message)
+        console.error('❌ Error stack:', error.stack)
         // Se falhar, usa uma imagem placeholder ou tenta novamente
         // Por enquanto, vamos deixar null e retornar só o avatar
-        console.warn('Manequim não foi gerado, retornando apenas avatar')
+        console.warn('⚠️ Manequim não foi gerado, retornando apenas avatar')
       }
 
       const allImages = [avatarImage]

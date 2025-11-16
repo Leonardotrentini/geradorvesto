@@ -52,6 +52,10 @@ export async function generateTryOnWithReplicate(
   // - top_image OU dress_image (imagem da roupa)
   // - model_image (imagem da pessoa) - OBRIGATÓRIO
   
+  console.log('🔵 Vella Try-On - Iniciando geração...')
+  console.log('🔵 Garment Image URL:', request.garmentImage?.substring(0, 100) + '...')
+  console.log('🔵 Person Image URL:', request.personImage?.substring(0, 100) + '...')
+  
   const input: any = {
     // Vella aceita top_image (camisa/blusa) ou dress_image (vestido)
     // Vamos usar top_image por padrão (funciona para qualquer peça)
@@ -59,15 +63,23 @@ export async function generateTryOnWithReplicate(
     
     // model_image é OBRIGATÓRIO para Vella
     model_image: request.personImage,
+    
+    // Parâmetros opcionais que melhoram resultados
+    // category: 'top' // Pode ser 'top', 'dress', 'bottom', etc.
   }
 
   try {
+    console.log('🔵 Enviando requisição para Vella 1.5...')
+    console.log('🔵 Input completo:', JSON.stringify(input, null, 2))
+    
     // Usa a biblioteca cliente que aceita o nome do modelo diretamente
     const output = await replicate.run(MODEL_NAME, { input })
 
-    console.log('Replicate output:', output)
-    console.log('Output type:', typeof output)
-    console.log('Is array:', Array.isArray(output))
+    console.log('✅ Vella retornou resultado')
+    console.log('🔵 Output raw:', output)
+    console.log('🔵 Output type:', typeof output)
+    console.log('🔵 Is array:', Array.isArray(output))
+    console.log('🔵 Output length:', Array.isArray(output) ? output.length : 'N/A')
 
     // A biblioteca pode retornar:
     // - String (URL direta)
@@ -101,29 +113,57 @@ export async function generateTryOnWithReplicate(
       }
     }
 
-    console.log('Processed URLs:', outputUrls)
+    console.log('🔵 Processed URLs:', outputUrls)
+    console.log('🔵 Total de URLs processadas:', outputUrls.length)
 
-    // Se gerou menos de 4, duplica para ter 4 variações
-    while (outputUrls.length < 4 && outputUrls.length > 0) {
-      outputUrls.push(outputUrls[0])
+    if (outputUrls.length === 0) {
+      console.error('❌ ERRO: Vella não retornou nenhuma URL!')
+      throw new Error('Vella não retornou nenhuma imagem. Verifique se as URLs das imagens são públicas e acessíveis.')
+    }
+
+    // Valida se a primeira URL é diferente da imagem original da pessoa
+    const firstUrl = outputUrls[0]
+    if (firstUrl === request.personImage) {
+      console.warn('⚠️ ATENÇÃO: URL retornada é igual à imagem original da pessoa!')
+      console.warn('⚠️ Isso pode indicar que o Vella não processou a imagem corretamente.')
+      console.warn('⚠️ Verifique se:')
+      console.warn('   - A imagem da roupa está isolada (fundo branco/transparente)')
+      console.warn('   - A imagem da pessoa é de corpo inteiro')
+      console.warn('   - As URLs são públicas e acessíveis')
+    } else {
+      console.log('✅ URL retornada é diferente da imagem original - sucesso!')
     }
     
-    // Converte para o formato esperado
+    // Retorna apenas a primeira imagem (não precisa duplicar)
     return {
       id: `gen_${Date.now()}`,
       status: 'succeeded',
-      output: outputUrls.slice(0, 4), // Garante 4 imagens
+      output: [firstUrl], // Retorna apenas 1 imagem (a melhor)
     }
   } catch (error: any) {
+    console.error('❌ ERRO ao gerar try-on com Vella:', error)
+    console.error('❌ Error message:', error.message)
+    console.error('❌ Error stack:', error.stack)
+    
     // Se der erro, tenta criar uma predição assíncrona
     if (error.message?.includes('version') || error.message?.includes('not found')) {
       throw new Error(
         `Modelo "${MODEL_NAME}" não encontrado. ` +
-        `Verifique se o nome do modelo está correto em lib/api/replicate-tryon.ts`
+        `Verifique se o nome do modelo está correto em lib/api/replicate-tryon.ts. ` +
+        `Erro original: ${error.message}`
       )
     }
     
-    throw new Error(error.message || 'Erro ao gerar try-on')
+    // Erros específicos do Vella
+    if (error.message?.includes('image') || error.message?.includes('URL')) {
+      throw new Error(
+        `Erro ao processar imagens no Vella. ` +
+        `Verifique se as URLs são públicas e acessíveis. ` +
+        `Erro: ${error.message}`
+      )
+    }
+    
+    throw new Error(`Erro ao gerar try-on: ${error.message || 'Erro desconhecido'}`)
   }
 }
 

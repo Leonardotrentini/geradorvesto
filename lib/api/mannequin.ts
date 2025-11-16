@@ -64,23 +64,36 @@ export async function generateMannequin(
   // Prompt mais específico e direto
   const prompt = `${genderText} mannequin, ${mannequinStyle}, wearing fashion clothing, ${backgroundStyle}, professional retail photography, high quality, detailed, photorealistic, fashion store display`
 
+  console.log('🔵 Iniciando geração de manequim...')
+  console.log('🔵 Gênero:', request.gender)
+  console.log('🔵 Prompt:', prompt.substring(0, 200) + '...')
+  
   // Tenta primeiro com SDXL (melhor qualidade)
   try {
-    console.log('Tentando gerar manequim com SDXL...')
-    const output = await replicate.run(SDXL_MODEL, {
-      input: {
-        prompt,
-        negative_prompt: 'realistic human face, skin texture, detailed facial features, hair, person, blurry, low quality, distorted, deformed, ugly, bad anatomy, multiple people',
-        num_inference_steps: 40, // Reduzido para ser mais rápido
-        guidance_scale: 7.5,
-        width: 512, // Reduzido para evitar erros
-        height: 768,
-      },
-    })
+    console.log('🔵 Tentando gerar manequim com SDXL...')
+    const input = {
+      prompt,
+      negative_prompt: 'realistic human face, skin texture, detailed facial features, hair, person, blurry, low quality, distorted, deformed, ugly, bad anatomy, multiple people, realistic skin',
+      num_inference_steps: 50, // Aumentado para melhor qualidade
+      guidance_scale: 8.0, // Aumentado para melhor aderência ao prompt
+      width: 768, // Aumentado para melhor qualidade
+      height: 1024, // Aumentado para melhor qualidade
+    }
+    
+    console.log('🔵 SDXL Input:', JSON.stringify(input, null, 2))
+    
+    const output = await replicate.run(SDXL_MODEL, { input })
 
+    console.log('✅ SDXL retornou resultado')
+    console.log('🔵 Output raw:', output)
+    console.log('🔵 Output type:', typeof output)
+    
     // Processa o output
     let imageUrl: string
     if (Array.isArray(output)) {
+      if (output.length === 0) {
+        throw new Error('SDXL retornou array vazio')
+      }
       imageUrl = typeof output[0] === 'string' ? output[0] : (output[0] as any).url || String(output[0])
     } else if (typeof output === 'string') {
       imageUrl = output
@@ -88,13 +101,19 @@ export async function generateMannequin(
       imageUrl = (output as any).url || String(output)
     }
 
-    console.log('Manequim gerado com SDXL com sucesso:', imageUrl)
+    if (!imageUrl || imageUrl.length === 0) {
+      throw new Error('SDXL retornou URL vazia ou inválida')
+    }
+
+    console.log('✅ Manequim gerado com SDXL com sucesso:', imageUrl.substring(0, 100) + '...')
     return {
       image: imageUrl,
     }
   } catch (error: any) {
     // Se SDXL falhar, tenta com modelo básico
-    console.warn('SDXL falhou, tentando com modelo básico...', error.message)
+    console.error('❌ SDXL falhou:', error.message)
+    console.error('❌ Error stack:', error.stack)
+    console.warn('⚠️ Tentando fallback com modelo básico...')
     
     try {
       console.log('Tentando gerar manequim com modelo básico...')
