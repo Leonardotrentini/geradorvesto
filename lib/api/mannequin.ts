@@ -61,8 +61,8 @@ export async function generateMannequin(
   }
   
   // Prompt otimizado baseado no briefing técnico
-  const { generateMannequinPrompt, generateMannequinNegativePrompt } = await import('@/lib/utils/promptGenerator')
-  const { detectGarmentColorAndType } = await import('@/lib/utils/promptGenerator')
+  const promptModule = await import('@/lib/utils/promptGenerator')
+  const { generateMannequinPrompt, generateMannequinNegativePrompt, detectGarmentColorAndType } = promptModule
   
   // Detecta cor e tipo da roupa
   const garmentInfo = detectGarmentColorAndType(request.garmentImage)
@@ -85,7 +85,7 @@ export async function generateMannequin(
     console.log('🔵 Tentando gerar manequim com Stable Diffusion (básico)...')
     const input = {
       prompt,
-      negative_prompt: generateMannequinNegativePrompt(),
+      negative_prompt: (await import('@/lib/utils/promptGenerator')).generateMannequinNegativePrompt(),
       num_inference_steps: 40, // Reduzido para ser mais rápido e confiável
       guidance_scale: 8.5, // Aumentado para melhor aderência ao prompt
       width: 512, // Dimensões padrão (mais confiável)
@@ -159,7 +159,7 @@ export async function generateMannequin(
       console.log('🔵 Tentando gerar manequim com SDXL (fallback)...')
       const fallbackInput = {
         prompt,
-        negative_prompt: generateMannequinNegativePrompt(),
+        negative_prompt: (await import('@/lib/utils/promptGenerator')).generateMannequinNegativePrompt(),
         num_inference_steps: 30, // Reduzido para ser mais rápido
         guidance_scale: 7.5,
         width: 512, // Reduzido para evitar erros
