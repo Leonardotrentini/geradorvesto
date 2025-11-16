@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { ResultGrid } from '@/components/generation/ResultGrid'
 import { ProgressBar } from '@/components/generation/ProgressBar'
@@ -12,7 +12,7 @@ import toast from 'react-hot-toast'
 import { downloadImage, downloadImagesAsZip } from '@/lib/utils/download'
 import { shareOnWhatsApp, shareOnFacebook, shareOnInstagram, copyLinkToClipboard, generateShareLink } from '@/lib/utils/share'
 
-export default function ResultPage() {
+function ResultPageContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const resultId = searchParams.get('id')
@@ -160,8 +160,8 @@ export default function ResultPage() {
       ]
       
       await downloadImagesAsZip(
-        result.images.filter(img => img), // Remove nulls
-        filenames.slice(0, result.images.filter(img => img).length),
+        result.images.filter((img: string | null) => img) as string[], // Remove nulls
+        filenames.slice(0, result.images.filter((img: string | null) => img).length),
         `vesto-geracao-${result.id}.zip`
       )
       
@@ -423,4 +423,28 @@ export default function ResultPage() {
   )
 }
 
+export default function ResultPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-vesto-green py-12">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <Card>
+            <CardContent className="p-12">
+              <div className="text-center space-y-6">
+                <div className="w-16 h-16 bg-gold/10 border border-gold/30 rounded-full flex items-center justify-center mx-auto">
+                  <Sparkles className="w-8 h-8 text-gold animate-pulse" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold mb-2 text-gold">Carregando...</h2>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    }>
+      <ResultPageContent />
+    </Suspense>
+  )
+}
 

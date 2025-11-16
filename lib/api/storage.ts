@@ -29,7 +29,7 @@ export async function uploadToCloudinary(
   if (file instanceof File) {
     formData.append('file', file)
   } else {
-    formData.append('file', new Blob([file]), 'image.jpg')
+    formData.append('file', new Blob([new Uint8Array(file)]), 'image.jpg')
   }
   
   formData.append('upload_preset', 'geradorfotos')

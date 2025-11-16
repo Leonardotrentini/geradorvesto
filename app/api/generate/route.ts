@@ -207,9 +207,10 @@ export async function POST(request: NextRequest) {
           console.log('Processed avatar URLs:', processedUrls)
           
           if (processedUrls.length > 0) {
-            avatarImage = processedUrls[0]
-            if (avatarImage) {
-              console.log('Avatar gerado com sucesso:', avatarImage.substring(0, 100) + '...')
+            const firstUrl = processedUrls[0]
+            if (firstUrl) {
+              avatarImage = firstUrl
+              console.log('Avatar gerado com sucesso:', firstUrl.substring(0, 100) + '...')
             }
           }
         }
