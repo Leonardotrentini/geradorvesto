@@ -252,7 +252,7 @@ export function ImageDropzone({
               <div className="text-xs text-gold/60 space-y-1">
                 <p className="text-center">
                   {validationDetails.dimensions.width}x{validationDetails.dimensions.height}px
-                  {validationDetails.aspectRatio && ` • ${validationDetails.aspectRatio.toFixed(2)}:1`}
+                  {validationDetails.dimensions.aspectRatio && ` • ${validationDetails.dimensions.aspectRatio.toFixed(2)}:1`}
                 </p>
                 {isPersonImage && validationDetails.isFullBody !== undefined && (
                   <p className="text-center">
