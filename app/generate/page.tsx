@@ -156,18 +156,58 @@ export default function GeneratePage() {
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-gold-bright">
                   <CheckCircle2 className="w-4 h-4" />
-                  <span className="font-semibold">Foto da Pessoa</span>
+                  <span className="font-semibold">Foto da Pessoa/Modelo</span>
                 </div>
-                <div className="relative aspect-[3/4] bg-gradient-to-b from-gray-100 to-gray-200 rounded-lg border-2 border-gold/30 overflow-hidden">
+                <div className="relative aspect-[3/4] bg-white rounded-lg border-2 border-gold/30 overflow-hidden">
+                  {/* Fundo neutro */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-gray-50 to-gray-100"></div>
+                  
+                  {/* Silhueta completa do corpo */}
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center p-4">
-                      <div className="w-16 h-32 mx-auto mb-3 bg-gradient-to-b from-pink-200 to-pink-300 rounded-full relative">
-                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-12 bg-pink-400 rounded-full"></div>
-                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-20 h-24 bg-pink-500 rounded-t-full"></div>
+                    <div className="relative w-full h-full flex flex-col items-center justify-center p-4">
+                      {/* Linha de referência superior (cabeça) */}
+                      <div className="absolute top-2 left-0 right-0 h-0.5 bg-gold/30"></div>
+                      <div className="absolute top-1 left-2 text-[6px] text-gold/50 font-medium">CABEÇA</div>
+                      
+                      {/* Corpo completo */}
+                      <div className="relative flex flex-col items-center">
+                        {/* Cabeça */}
+                        <div className="w-14 h-14 bg-gradient-to-b from-pink-200 to-pink-300 rounded-full border-2 border-pink-400 mb-1"></div>
+                        
+                        {/* Tronco */}
+                        <div className="w-16 h-20 bg-gradient-to-b from-pink-300 to-pink-400 rounded-t-lg mb-1"></div>
+                        
+                        {/* Cintura */}
+                        <div className="w-12 h-2 bg-pink-500 mb-1"></div>
+                        
+                        {/* Quadris */}
+                        <div className="w-14 h-4 bg-pink-400 mb-1"></div>
+                        
+                        {/* Pernas */}
+                        <div className="w-10 h-24 bg-gradient-to-b from-pink-300 to-pink-400 rounded-b-lg mb-1"></div>
+                        
+                        {/* Pés - CRÍTICO mostrar */}
+                        <div className="flex gap-1">
+                          <div className="w-6 h-3 bg-pink-500 rounded-t-full"></div>
+                          <div className="w-6 h-3 bg-pink-500 rounded-t-full"></div>
+                        </div>
                       </div>
-                      <p className="text-xs text-gray-600 font-medium">Corpo inteiro</p>
-                      <p className="text-xs text-gray-500">Boa iluminação</p>
+                      
+                      {/* Linha de referência inferior (pés) */}
+                      <div className="absolute bottom-2 left-0 right-0 h-0.5 bg-gold/30"></div>
+                      <div className="absolute bottom-1 left-2 text-[6px] text-gold/50 font-medium">PÉS</div>
+                      
+                      {/* Indicador de proporção */}
+                      <div className="absolute top-1 right-2 text-[6px] text-gold/50 font-medium bg-gold/10 px-1 rounded">
+                        3:4
+                      </div>
                     </div>
+                  </div>
+                  
+                  {/* Overlay com informações */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/40 text-white p-2">
+                    <p className="text-[10px] font-semibold text-center">CORPO INTEIRO</p>
+                    <p className="text-[8px] text-center text-gray-200">Da cabeça aos pés</p>
                   </div>
                 </div>
                 <ul className="text-xs text-gold/70 space-y-1 font-light">
