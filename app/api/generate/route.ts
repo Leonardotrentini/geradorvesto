@@ -208,7 +208,9 @@ export async function POST(request: NextRequest) {
           
           if (processedUrls.length > 0) {
             avatarImage = processedUrls[0]
-            console.log('Avatar gerado com sucesso:', avatarImage.substring(0, 100) + '...')
+            if (avatarImage) {
+              console.log('Avatar gerado com sucesso:', avatarImage.substring(0, 100) + '...')
+            }
           }
         }
       } catch (error: any) {
