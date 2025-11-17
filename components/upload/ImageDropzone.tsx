@@ -150,8 +150,13 @@ export function ImageDropzone({
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    console.log('🔵 ImageDropzone: handleClick chamado')
+    console.log('🔵 fileInputRef.current:', fileInputRef.current)
     if (fileInputRef.current) {
+      console.log('🔵 Chamando fileInputRef.current.click()')
       fileInputRef.current.click()
+    } else {
+      console.error('❌ fileInputRef.current é null!')
     }
   }
 
@@ -318,10 +323,11 @@ export function ImageDropzone({
         onDrop={handleDrop}
         className={`
           border-2 border-dashed rounded-lg p-12 text-center cursor-pointer
-          transition-colors
+          transition-colors relative z-10
           ${isDragging ? 'border-gold bg-gold/10' : 'border-gold/30 hover:border-gold/50 bg-[#1a4d3a]/40'}
           ${error ? 'border-red-500 bg-red-500/10' : ''}
         `}
+        style={{ pointerEvents: 'auto' }}
       >
         <div className="flex flex-col items-center gap-4">
           <div className="w-16 h-16 bg-gold/10 border border-gold/30 rounded-full flex items-center justify-center">

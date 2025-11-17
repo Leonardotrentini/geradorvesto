@@ -30,13 +30,19 @@ export default function ScanPage() {
   const [result, setResult] = useState<ScanResult | null>(null)
   const [validation, setValidation] = useState<any>(null)
 
-  const handleImageSelect = async (file: File) => {
-    setImage(file)
-    setResult(null)
-    setValidation(null)
-
-    // Validação prévia (opcional - pode ser feita no backend)
-    toast.info('Imagem selecionada. Clique em "Escanear Peça" para iniciar.')
+  const handleImageSelect = async (file: File | null) => {
+    console.log('🔵 handleImageSelect chamado com:', file?.name || 'null')
+    if (file) {
+      setImage(file)
+      setResult(null)
+      setValidation(null)
+      // Validação prévia (opcional - pode ser feita no backend)
+      toast.info('Imagem selecionada. Clique em "Escanear Peça" para iniciar.')
+    } else {
+      setImage(null)
+      setResult(null)
+      setValidation(null)
+    }
   }
 
   const handleScan = async () => {
@@ -121,7 +127,7 @@ export default function ScanPage() {
                 Envie uma foto da roupa (packshot, fundo claro)
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="relative z-10">
               <ImageDropzone
                 label="Arraste a foto da peça aqui"
                 currentFile={image}
