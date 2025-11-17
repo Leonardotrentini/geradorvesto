@@ -176,9 +176,11 @@ async function fileToUrl(file: File): Promise<string> {
   const { put } = await import('@vercel/blob')
   
   const fileName = `garment-${Date.now()}-${file.name}`
-  const blob = await put(fileName, file, {
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const blob = await put(fileName, buffer, {
     access: 'public',
     addRandomSuffix: true,
+    contentType: file.type,
   })
   
   return blob.url

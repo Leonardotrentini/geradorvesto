@@ -12,6 +12,7 @@
  * - Detecção de padrões
  */
 
+import sharp from 'sharp'
 import { GarmentMetadata } from './types'
 
 export interface ClassificationResult {
@@ -51,25 +52,30 @@ export async function classifyGarment(
  */
 async function detectGarmentType(imageUrl: string): Promise<GarmentMetadata['type']> {
   // Carrega imagem
-  const image = await loadImage(imageUrl)
-  const canvas = document.createElement('canvas')
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('Não foi possível criar canvas')
+  const response = await fetch(imageUrl)
+  const buffer = Buffer.from(await response.arrayBuffer())
+  const sharpImage = sharp(buffer)
+  const metadata = await sharpImage.metadata()
+  const { width, height } = metadata
 
-  canvas.width = image.width
-  canvas.height = image.height
-  ctx.drawImage(image, 0, 0)
+  if (!width || !height) {
+    throw new Error('Não foi possível ler dimensões da imagem')
+  }
 
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  // Obtém dados da imagem para análise
+  const { data, info } = await sharpImage
+    .raw()
+    .ensureAlpha()
+    .toBuffer({ resolveWithObject: true })
 
   // Análise heurística baseada em:
   // - Proporção altura/largura
   // - Distribuição de pixels não transparentes
   // - Forma geral
 
-  const aspectRatio = canvas.width / canvas.height
-  const nonTransparentPixels = countNonTransparentPixels(imageData)
-  const coverageRatio = nonTransparentPixels / (canvas.width * canvas.height)
+  const aspectRatio = width / height
+  const nonTransparentPixels = countNonTransparentPixels(data, width, height, info.channels)
+  const coverageRatio = nonTransparentPixels / (width * height)
 
   // Heurísticas:
   // - Vestido: geralmente mais alto que largo, cobertura média-alta
@@ -111,26 +117,23 @@ async function detectGarmentType(imageUrl: string): Promise<GarmentMetadata['typ
  * Detecta cor dominante
  */
 async function detectDominantColor(imageUrl: string): Promise<string> {
-  const image = await loadImage(imageUrl)
-  const canvas = document.createElement('canvas')
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('Não foi possível criar canvas')
-
-  canvas.width = image.width
-  canvas.height = image.height
-  ctx.drawImage(image, 0, 0)
-
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-  const data = imageData.data
+  const response = await fetch(imageUrl)
+  const buffer = Buffer.from(await response.arrayBuffer())
+  const sharpImage = sharp(buffer)
+  const { data, info } = await sharpImage
+    .raw()
+    .ensureAlpha()
+    .toBuffer({ resolveWithObject: true })
 
   // Agrupa cores em buckets
   const colorBuckets: { [key: string]: number } = {}
+  const channels = info.channels
 
-  for (let i = 0; i < data.length; i += 4) {
+  for (let i = 0; i < data.length; i += channels) {
     const r = data[i]
     const g = data[i + 1]
     const b = data[i + 2]
-    const a = data[i + 3]
+    const a = channels > 3 ? data[i + 3] : 255
 
     // Ignora pixels transparentes
     if (a < 128) continue
@@ -203,34 +206,39 @@ function rgbToColorName(r: number, g: number, b: number): string {
  * Detecta padrão (liso, estampado, etc.)
  */
 async function detectPattern(imageUrl: string): Promise<GarmentMetadata['pattern']> {
-  const image = await loadImage(imageUrl)
-  const canvas = document.createElement('canvas')
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('Não foi possível criar canvas')
+  const response = await fetch(imageUrl)
+  const buffer = Buffer.from(await response.arrayBuffer())
+  const sharpImage = sharp(buffer)
+  const metadata = await sharpImage.metadata()
+  const { width, height } = metadata
 
-  canvas.width = image.width
-  canvas.height = image.height
-  ctx.drawImage(image, 0, 0)
+  if (!width || !height) {
+    throw new Error('Não foi possível ler dimensões da imagem')
+  }
 
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-  const data = imageData.data
+  const { data, info } = await sharpImage
+    .raw()
+    .ensureAlpha()
+    .toBuffer({ resolveWithObject: true })
+
+  const channels = info.channels
 
   // Calcula variância de cores (alto = estampado, baixo = liso)
   const colorVariances: number[] = []
 
-  for (let i = 0; i < data.length; i += 16) { // Amostra a cada 4 pixels
+  for (let i = 0; i < data.length; i += channels * 4) { // Amostra a cada 4 pixels
     const r = data[i]
     const g = data[i + 1]
     const b = data[i + 2]
-    const a = data[i + 3]
+    const a = channels > 3 ? data[i + 3] : 255
 
     if (a < 128) continue
 
     // Calcula variância local (comparando com pixels vizinhos)
-    if (i + 16 < data.length) {
-      const nextR = data[i + 16]
-      const nextG = data[i + 17]
-      const nextB = data[i + 18]
+    if (i + channels * 4 < data.length) {
+      const nextR = data[i + channels * 4]
+      const nextG = data[i + channels * 4 + 1]
+      const nextB = data[i + channels * 4 + 2]
 
       const variance = Math.sqrt(
         Math.pow(r - nextR, 2) + Math.pow(g - nextG, 2) + Math.pow(b - nextB, 2)
@@ -267,7 +275,7 @@ async function detectPattern(imageUrl: string): Promise<GarmentMetadata['pattern
 /**
  * Detecta se tem padrão de listras
  */
-function detectStripes(imageData: ImageData): boolean {
+function detectStripes(data: Buffer, width: number, height: number, channels: number): boolean {
   // Análise simplificada: verifica se há linhas horizontais ou verticais repetitivas
   // TODO: Implementar detecção mais sofisticada
   return false
@@ -276,26 +284,21 @@ function detectStripes(imageData: ImageData): boolean {
 /**
  * Conta pixels não transparentes
  */
-function countNonTransparentPixels(imageData: ImageData): number {
+function countNonTransparentPixels(data: Buffer, width: number, height: number, channels: number): number {
   let count = 0
-  for (let i = 3; i < imageData.data.length; i += 4) {
-    if (imageData.data[i] > 128) {
-      count++
+  const alphaIndex = channels > 3 ? 3 : -1
+  
+  if (alphaIndex > 0) {
+    for (let i = alphaIndex; i < data.length; i += channels) {
+      if (data[i] > 128) {
+        count++
+      }
     }
+  } else {
+    // Se não tem alpha, conta todos os pixels
+    count = (width * height)
   }
+  
   return count
-}
-
-/**
- * Carrega imagem de URL
- */
-async function loadImage(url: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-    img.onload = () => resolve(img)
-    img.onerror = () => reject(new Error('Erro ao carregar imagem'))
-    img.src = url
-  })
 }
 

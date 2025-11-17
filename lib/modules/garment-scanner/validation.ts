@@ -7,6 +7,7 @@
  * - OOTDiffusion: validação de fundo e contraste
  */
 
+import sharp from 'sharp'
 import { GarmentValidation, ValidationIssue } from './types'
 
 /**
@@ -19,22 +20,35 @@ export async function validateGarmentImage(
   const warnings: string[] = []
   let score = 10
 
-  // Carrega imagem
-  const imageElement = await loadImage(image)
-  const canvas = document.createElement('canvas')
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('Não foi possível criar canvas')
+  // Carrega imagem com sharp
+  let imageBuffer: Buffer
+  if (typeof image === 'string') {
+    // Se for URL, faz fetch
+    const response = await fetch(image)
+    imageBuffer = Buffer.from(await response.arrayBuffer())
+  } else {
+    // Se for File, converte para Buffer
+    imageBuffer = Buffer.from(await image.arrayBuffer())
+  }
 
-  canvas.width = imageElement.width
-  canvas.height = imageElement.height
-  ctx.drawImage(imageElement, 0, 0)
+  const sharpImage = sharp(imageBuffer)
+  const metadata = await sharpImage.metadata()
+  const { width, height } = metadata
 
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  if (!width || !height) {
+    throw new Error('Não foi possível ler dimensões da imagem')
+  }
+
+  // Obtém dados da imagem (RGB)
+  const { data, info } = await sharpImage
+    .raw()
+    .ensureAlpha()
+    .toBuffer({ resolveWithObject: true })
 
   // 1. VALIDAÇÃO DE RESOLUÇÃO
   const minResolution = 1024
   const idealResolution = 2048
-  const maxDimension = Math.max(canvas.width, canvas.height)
+  const maxDimension = Math.max(width, height)
 
   if (maxDimension < minResolution) {
     issues.push({
@@ -49,7 +63,7 @@ export async function validateGarmentImage(
   }
 
   // 2. VALIDAÇÃO DE FOCO (BLUR DETECTION)
-  const blurScore = detectBlur(imageData)
+  const blurScore = detectBlur(data, width, height, info.channels)
   if (blurScore > 0.5) {
     issues.push({
       type: 'blur',
@@ -63,7 +77,7 @@ export async function validateGarmentImage(
   }
 
   // 3. VALIDAÇÃO DE PEÇA INTEIRA (EDGE DETECTION)
-  const isCut = detectCutGarment(imageData, canvas.width, canvas.height)
+  const isCut = detectCutGarment(data, width, height, info.channels)
   if (isCut) {
     issues.push({
       type: 'cut',
@@ -74,14 +88,14 @@ export async function validateGarmentImage(
   }
 
   // 4. VALIDAÇÃO DE FUNDO
-  const backgroundScore = analyzeBackground(imageData, canvas.width, canvas.height)
+  const backgroundScore = analyzeBackground(data, width, height, info.channels)
   if (backgroundScore < 0.5) {
     warnings.push('Fundo pode não ser ideal para segmentação (muito complexo ou similar à roupa)')
     score -= 1
   }
 
   // 5. VALIDAÇÃO DE CONTRASTE
-  const contrastScore = calculateContrast(imageData)
+  const contrastScore = calculateContrast(data, width, height, info.channels)
   if (contrastScore < 0.3) {
     warnings.push('Contraste baixo entre roupa e fundo. Pode dificultar segmentação')
     score -= 1
@@ -98,46 +112,20 @@ export async function validateGarmentImage(
   }
 }
 
-/**
- * Carrega imagem de File ou URL
- */
-async function loadImage(image: File | string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    
-    if (typeof image === 'string') {
-      img.crossOrigin = 'anonymous'
-      img.src = image
-    } else {
-      const url = URL.createObjectURL(image)
-      img.src = url
-      img.onload = () => {
-        URL.revokeObjectURL(url)
-        resolve(img)
-      }
-    }
-
-    img.onload = () => resolve(img)
-    img.onerror = () => reject(new Error('Erro ao carregar imagem'))
-  })
-}
 
 /**
  * Detecta blur usando Laplacian variance
  * Baseado em: https://pyimagesearch.com/2015/09/07/blur-detection-with-opencv/
  */
-function detectBlur(imageData: ImageData): number {
+function detectBlur(data: Buffer, width: number, height: number, channels: number): number {
   // Converte para escala de cinza
   const gray: number[] = []
-  for (let i = 0; i < imageData.data.length; i += 4) {
-    const r = imageData.data[i]
-    const g = imageData.data[i + 1]
-    const b = imageData.data[i + 2]
+  for (let i = 0; i < data.length; i += channels) {
+    const r = data[i]
+    const g = data[i + 1]
+    const b = data[i + 2]
     gray.push(0.299 * r + 0.587 * g + 0.114 * b)
   }
-
-  const width = imageData.width
-  const height = imageData.height
 
   // Calcula Laplacian (segunda derivada)
   let laplacianSum = 0
@@ -164,7 +152,7 @@ function detectBlur(imageData: ImageData): number {
 /**
  * Detecta se peça está cortada nas bordas
  */
-function detectCutGarment(imageData: ImageData, width: number, height: number): boolean {
+function detectCutGarment(data: Buffer, width: number, height: number, channels: number): boolean {
   // Verifica bordas da imagem por pixels não brancos (assumindo fundo branco)
   const edgeThreshold = 0.1 // 10% da borda
   const edgeWidth = Math.floor(width * edgeThreshold)
@@ -180,12 +168,12 @@ function detectCutGarment(imageData: ImageData, width: number, height: number): 
 
   for (const edge of edges) {
     let nonWhitePixels = 0
-    for (let y = edge.y; y < edge.y + edge.h; y++) {
-      for (let x = edge.x; x < edge.x + edge.w; x++) {
-        const idx = (y * width + x) * 4
-        const r = imageData.data[idx]
-        const g = imageData.data[idx + 1]
-        const b = imageData.data[idx + 2]
+    for (let y = edge.y; y < edge.y + edge.h && y < height; y++) {
+      for (let x = edge.x; x < edge.x + edge.w && x < width; x++) {
+        const idx = (y * width + x) * channels
+        const r = data[idx]
+        const g = data[idx + 1]
+        const b = data[idx + 2]
         
         // Se não for branco (threshold 240)
         if (r < 240 || g < 240 || b < 240) {
@@ -207,7 +195,7 @@ function detectCutGarment(imageData: ImageData, width: number, height: number): 
 /**
  * Analisa qualidade do fundo
  */
-function analyzeBackground(imageData: ImageData, width: number, height: number): number {
+function analyzeBackground(data: Buffer, width: number, height: number, channels: number): number {
   // Amostra bordas (assumindo fundo nas bordas)
   const sampleSize = Math.min(100, Math.floor(width * 0.1))
   const samples: number[] = []
@@ -225,10 +213,10 @@ function analyzeBackground(imageData: ImageData, width: number, height: number):
     let count = 0
     for (let y = corner.y; y < corner.y + sampleSize && y < height; y++) {
       for (let x = corner.x; x < corner.x + sampleSize && x < width; x++) {
-        const idx = (y * width + x) * 4
-        const r = imageData.data[idx]
-        const g = imageData.data[idx + 1]
-        const b = imageData.data[idx + 2]
+        const idx = (y * width + x) * channels
+        const r = data[idx]
+        const g = data[idx + 1]
+        const b = data[idx + 2]
         brightnessSum += (r + g + b) / 3
         count++
       }
@@ -249,13 +237,13 @@ function analyzeBackground(imageData: ImageData, width: number, height: number):
 /**
  * Calcula contraste entre roupa e fundo
  */
-function calculateContrast(imageData: ImageData): number {
+function calculateContrast(data: Buffer, width: number, height: number, channels: number): number {
   // Simplificado: calcula desvio padrão dos pixels (alto = alto contraste)
   const pixels: number[] = []
-  for (let i = 0; i < imageData.data.length; i += 4) {
-    const r = imageData.data[i]
-    const g = imageData.data[i + 1]
-    const b = imageData.data[i + 2]
+  for (let i = 0; i < data.length; i += channels) {
+    const r = data[i]
+    const g = data[i + 1]
+    const b = data[i + 2]
     pixels.push((r + g + b) / 3)
   }
 
