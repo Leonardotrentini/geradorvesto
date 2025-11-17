@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ImageDropzone } from '@/components/upload/ImageDropzone'
 import { Upload, Loader2, CheckCircle2, XCircle, Download } from 'lucide-react'
-import { toast } from 'sonner'
+import toast from 'react-hot-toast'
 
 interface ScanResult {
   garment_id: string
