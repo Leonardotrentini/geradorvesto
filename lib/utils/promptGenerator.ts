@@ -38,14 +38,15 @@ export function generateMannequinPrompt(config: PromptConfig): string {
   
   // Prompt para manequim simples, branco, minimalista, fundo preto (como referência)
   // Estilo e-commerce profissional - foco total no produto
-  return `professional product photography, white minimalist ${genderText} mannequin, smooth matte white surface, no facial features, no eyes, no nose, no mouth, no hair, clean modern design, wearing ${colorDesc} ${garmentType}, standing pose, arms at sides, solid black background, studio lighting, high quality, 4k, sharp details, mannequin only, product display, e-commerce style`
+  // CRÍTICO: Apenas manequim branco, sem rosto, fundo preto sólido, sem ambiente
+  return `white mannequin, minimalist, smooth white matte surface, no face, no eyes, no nose, no mouth, no hair, no facial features, clean white mannequin body, wearing ${colorDesc} ${garmentType}, standing straight, arms at sides, solid pure black background, no objects, no furniture, no store, no environment, no decorations, no accessories, no glass, no cases, product photography, studio lighting, high quality, sharp focus, e-commerce style, isolated on black`
 }
 
 /**
  * Gera negative prompt para manequim
  */
 export function generateMannequinNegativePrompt(): string {
-  return `no people, no faces, no realistic human face, no skin texture, no detailed facial features, no hair, no person, no blur, no cartoon style, no low-resolution, no watermark, no text, no logos, no extra limbs, no deformed mannequin, no multiple mannequins, no realistic eyes, no realistic hands, no human body parts, no living person, mannequin only, display mannequin, no store interior, no background objects, no furniture, no decorations, no accessories, no glass cases, no retail environment, solid black background only, minimalist, clean, simple`
+  return `no people, no faces, no realistic human face, no skin texture, no detailed facial features, no hair, no person, no blur, no cartoon style, no low-resolution, no watermark, no text, no logos, no extra limbs, no deformed mannequin, no multiple mannequins, no realistic eyes, no realistic hands, no human body parts, no living person, no store interior, no background objects, no furniture, no decorations, no accessories, no glass cases, no retail environment, no boutique, no shop, no store, no environment, no walls, no floor details, no lighting fixtures, no displays, no shelves, no racks, no golden mannequins, no colored mannequins, no stylized mannequins, no dynamic poses, no raised arms, no complex poses, no marble, no luxury details, no opulent atmosphere, no warm lighting, no sophisticated lighting, only solid black background, only white mannequin, minimalist, clean, simple, isolated`
 }
 
 /**

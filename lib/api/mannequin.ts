@@ -110,8 +110,8 @@ export async function generateMannequin(
     const input = {
       prompt,
       negative_prompt: negativePrompt,
-      num_inference_steps: 50, // Aumentado para melhor qualidade
-      guidance_scale: 9.0, // Aumentado para melhor aderência ao prompt
+      num_inference_steps: 60, // Aumentado para melhor qualidade e aderência ao prompt
+      guidance_scale: 12.0, // Aumentado significativamente para forçar aderência ao prompt (manequim branco, fundo preto)
       width: 512, // Dimensões padrão (mais confiável)
       height: 768, // Proporção vertical para manequim
       scheduler: 'DPMSolverMultistep', // Scheduler mais confiável
@@ -185,8 +185,8 @@ export async function generateMannequin(
       const fallbackInput = {
         prompt,
         negative_prompt: negativePrompt,
-        num_inference_steps: 50, // Aumentado para melhor qualidade
-        guidance_scale: 9.0, // Aumentado para melhor aderência
+        num_inference_steps: 60, // Aumentado para melhor qualidade
+        guidance_scale: 12.0, // Aumentado significativamente para forçar aderência ao prompt
         width: 512,
         height: 768,
         scheduler: 'DPMSolverMultistep',
