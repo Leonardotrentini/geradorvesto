@@ -124,10 +124,8 @@ export default function ScanPage() {
             <CardContent>
               <ImageDropzone
                 label="Arraste a foto da peça aqui"
-                value={image}
-                onChange={handleImageSelect}
-                accept="image/*"
-                maxSize={10 * 1024 * 1024}
+                currentFile={image}
+                onFileSelect={handleImageSelect}
                 showValidation={true}
                 isPersonImage={false}
               />

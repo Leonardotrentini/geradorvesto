@@ -147,8 +147,12 @@ export function ImageDropzone({
     reader.readAsDataURL(file)
   }
 
-  const handleClick = () => {
-    fileInputRef.current?.click()
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (fileInputRef.current) {
+      fileInputRef.current.click()
+    }
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -305,6 +309,7 @@ export function ImageDropzone({
         accept="image/jpeg,image/jpg,image/png,image/webp"
         onChange={handleFileChange}
         style={{ display: 'none' }}
+        tabIndex={-1}
       />
       <div
         onClick={handleClick}
