@@ -36,27 +36,21 @@ export function generateMannequinPrompt(config: PromptConfig): string {
   const colorDesc = config.color || config.description || 'elegant fashion garment'
   const genderText = config.gender === 'homem' ? 'male' : 'female'
   
-  // Background e estilo adaptados ao gênero
-  let backgroundStyle: string
-  let mannequinStyle: string
+  // Estilo de manequim simples, branco, minimalista (independente do gênero)
+  // Fundo sempre preto sólido para foco no produto
+  const mannequinStyle = config.gender === 'homem' 
+    ? 'white minimalist male mannequin, smooth matte white surface, no facial features, clean modern design'
+    : 'white minimalist female mannequin, smooth matte white surface, no facial features, clean modern design'
   
-  if (config.gender === 'homem') {
-    backgroundStyle = 'modern clothing store, industrial chic interior, exposed brick walls, dark wood floors, warm track lighting, clothing racks in background, bustling retail environment, contemporary boutique atmosphere'
-    mannequinStyle = 'realistic male mannequin, human-like proportions, natural pose, standing confidently, modern retail display'
-  } else {
-    backgroundStyle = 'luxury fashion boutique, elegant display case, rich red and gold accents, polished reflective surfaces, glass display cabinets with accessories, sophisticated retail environment, high-end store atmosphere'
-    mannequinStyle = 'realistic female mannequin, human-like proportions, elegant pose, graceful stance, luxury retail display'
-  }
-  
-  // Prompt mais direto e focado em MANEQUIM (não pessoa)
-  return `professional product photography, ${genderText} store mannequin, ${mannequinStyle}, wearing ${colorDesc} ${garmentType}, ${backgroundStyle}, mannequin display, fashion retail, studio lighting, high quality, 4k, sharp details, mannequin only, no human face, no realistic skin`
+  // Prompt para manequim simples, branco, minimalista, fundo preto (como referência)
+  return `professional product photography, white minimalist mannequin, smooth matte white surface, no facial features, no eyes, no nose, no mouth, no hair, clean modern design, wearing ${colorDesc} ${garmentType}, standing pose, arms at sides, solid black background, studio lighting, high quality, 4k, sharp details, mannequin only, product display, e-commerce style`
 }
 
 /**
  * Gera negative prompt para manequim
  */
 export function generateMannequinNegativePrompt(): string {
-  return `no people, no faces, no realistic human face, no skin texture, no detailed facial features, no hair, no person, no blur, no cartoon style, no low-resolution, no watermark, no text, no logos, no extra limbs, no deformed mannequin, no multiple mannequins, no realistic eyes, no realistic hands, no human body parts, no living person, mannequin only, display mannequin`
+  return `no people, no faces, no realistic human face, no skin texture, no detailed facial features, no hair, no person, no blur, no cartoon style, no low-resolution, no watermark, no text, no logos, no extra limbs, no deformed mannequin, no multiple mannequins, no realistic eyes, no realistic hands, no human body parts, no living person, mannequin only, display mannequin, no store interior, no background objects, no furniture, no decorations, no accessories, no glass cases, no retail environment, solid black background only, minimalist, clean, simple`
 }
 
 /**

@@ -104,19 +104,43 @@ export async function generateTryOnWithReplicate(
   try {
     // Detecta pelo nome do arquivo/URL
     const lowerUrl = request.garmentImage.toLowerCase()
-    if (lowerUrl.includes('dress') || lowerUrl.includes('vestido') || 
-        lowerUrl.includes('maxi') || lowerUrl.includes('midi') || 
-        lowerUrl.includes('longo') || lowerUrl.includes('long')) {
+    
+    // Palavras-chave para VESTIDO (mais abrangente)
+    const dressKeywords = [
+      'dress', 'vestido', 'maxi', 'midi', 'longo', 'long', 
+      'gown', 'robe', 'frock', 'vestido longo', 'vestido maxi',
+      'vestido midi', 'dress longo', 'dress maxi'
+    ]
+    
+    // Palavras-chave para TOP/BLUSA
+    const topKeywords = [
+      'top', 'blusa', 'camisa', 'shirt', 'blouse', 't-shirt',
+      'tshirt', 'camiseta', 'cropped', 'crop top'
+    ]
+    
+    // Verifica se é vestido (prioridade)
+    const isDressMatch = dressKeywords.some(keyword => lowerUrl.includes(keyword))
+    const isTopMatch = topKeywords.some(keyword => lowerUrl.includes(keyword))
+    
+    if (isDressMatch && !isTopMatch) {
       garmentType = 'dress'
       isDress = true
-      console.log('🔵 Tipo detectado: VESTIDO')
-    } else {
+      console.log('🔵 Tipo detectado: VESTIDO (por palavras-chave)')
+    } else if (isTopMatch && !isDressMatch) {
       garmentType = 'top'
-      console.log('🔵 Tipo detectado: TOP/BLUSA')
+      console.log('🔵 Tipo detectado: TOP/BLUSA (por palavras-chave)')
+    } else {
+      // Se não detectou claramente, tenta inferir pela proporção da imagem
+      // Por padrão, se não tiver certeza, tenta DRESS primeiro (mais comum para e-commerce)
+      console.log('⚠️ Tipo não detectado claramente, tentando VESTIDO primeiro (padrão e-commerce)')
+      garmentType = 'dress'
+      isDress = true
     }
   } catch (error: any) {
     console.warn('⚠️ Erro ao detectar tipo de roupa:', error.message)
-    garmentType = 'top'
+    // Em caso de erro, tenta vestido primeiro (mais comum)
+    garmentType = 'dress'
+    isDress = true
   }
   
   // Monta input com parâmetros otimizados
