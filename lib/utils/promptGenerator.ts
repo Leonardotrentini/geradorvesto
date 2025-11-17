@@ -36,14 +36,9 @@ export function generateMannequinPrompt(config: PromptConfig): string {
   const colorDesc = config.color || config.description || 'elegant fashion garment'
   const genderText = config.gender === 'homem' ? 'male' : 'female'
   
-  // Estilo de manequim simples, branco, minimalista (independente do gênero)
-  // Fundo sempre preto sólido para foco no produto
-  const mannequinStyle = config.gender === 'homem' 
-    ? 'white minimalist male mannequin, smooth matte white surface, no facial features, clean modern design'
-    : 'white minimalist female mannequin, smooth matte white surface, no facial features, clean modern design'
-  
   // Prompt para manequim simples, branco, minimalista, fundo preto (como referência)
-  return `professional product photography, white minimalist mannequin, smooth matte white surface, no facial features, no eyes, no nose, no mouth, no hair, clean modern design, wearing ${colorDesc} ${garmentType}, standing pose, arms at sides, solid black background, studio lighting, high quality, 4k, sharp details, mannequin only, product display, e-commerce style`
+  // Estilo e-commerce profissional - foco total no produto
+  return `professional product photography, white minimalist ${genderText} mannequin, smooth matte white surface, no facial features, no eyes, no nose, no mouth, no hair, clean modern design, wearing ${colorDesc} ${garmentType}, standing pose, arms at sides, solid black background, studio lighting, high quality, 4k, sharp details, mannequin only, product display, e-commerce style`
 }
 
 /**
